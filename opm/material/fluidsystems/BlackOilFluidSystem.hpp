@@ -32,6 +32,7 @@
 #include "blackoilpvt/GasPvtMultiplexer.hpp"
 #include "blackoilpvt/WaterPvtMultiplexer.hpp"
 #include "blackoilpvt/BrineCo2Pvt.hpp"
+#include "blackoilpvt/BrineH2Pvt.hpp"
 
 #include <opm/material/fluidsystems/BaseFluidSystem.hpp>
 #include <opm/material/Constants.hpp>
