@@ -454,6 +454,7 @@ public:
     const Nupcol& nupcol() const noexcept;
     const Tracers& tracers() const;
     bool co2Storage() const noexcept;
+    bool h2Storage() const noexcept;
     bool micp() const noexcept;
 
     bool operator==(const Runspec& data) const;
@@ -477,6 +478,7 @@ public:
         serializer(m_sfuncctrl);
         serializer(m_nupcol);
         serializer(m_co2storage);
+        serializer(m_h2storage);
         serializer(m_micp);
     }
 
@@ -497,6 +499,7 @@ private:
     Nupcol m_nupcol;
     Tracers m_tracers;
     bool m_co2storage;
+    bool m_h2storage;
     bool m_micp;
 };
 
