@@ -29,6 +29,7 @@
 #include <opm/input/eclipse/EclipseState/EclipseConfig.hpp>
 #include <opm/input/eclipse/EclipseState/TracerConfig.hpp>
 #include <opm/input/eclipse/EclipseState/MICPpara.hpp>
+#include <opm/input/eclipse/EclipseState/BactPara.hpp>
 #include <opm/input/eclipse/EclipseState/WagHysteresisConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -115,6 +116,7 @@ namespace Opm {
         const AquiferConfig& aquifer() const;
         const TracerConfig& tracer() const;
         const MICPpara& getMICPpara() const;
+        const BactPara& getBactPara() const;
         const WagHysteresisConfig& getWagHysteresis() const;
 
         void reset_actnum(const std::vector<int>& new_actnum);
@@ -140,7 +142,6 @@ namespace Opm {
             serializer(m_deckUnitSystem);
             serializer(m_inputNnc);
             serializer(m_gridDims);
-            serializer(m_lgrs);
             serializer(m_simulationConfig);
             serializer(aquifer_config);
             serializer(m_transMult);
@@ -148,6 +149,7 @@ namespace Opm {
             serializer(m_title);
             serializer(tracer_config);
             serializer(m_micppara);
+            serializer(m_bactpara);
             serializer(wag_hyst_config);
         }
 
@@ -184,6 +186,7 @@ namespace Opm {
         TransMult m_transMult;
         TracerConfig tracer_config;
         MICPpara m_micppara;
+        BactPara m_bactpara;
         WagHysteresisConfig wag_hyst_config;
 
         std::string m_title{};

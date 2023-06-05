@@ -132,6 +132,7 @@ namespace Opm {
         , m_transMult(         GridDims(deck), deck, field_props)
         , tracer_config(       m_deckUnitSystem, deck)
         , m_micppara(          deck)
+        , m_bactpara(          deck)
         , wag_hyst_config(     deck)
     {
         this->assignRunTitle(deck);
@@ -242,6 +243,10 @@ namespace Opm {
 
     const MICPpara& EclipseState::getMICPpara() const {
         return m_micppara;
+    }
+
+    const BactPara& EclipseState::getBactPara() const {
+        return m_bactpara;
     }
 
     const WagHysteresisConfig& EclipseState::getWagHysteresis() const {
@@ -436,7 +441,6 @@ namespace Opm {
                        "MULTFLT(FLTNAME) equals {} and MULT(FLT-TRS) equals {}\n"
                        "Error creating reservoir properties: {}" , faultPattern, multFlt, std_error.what()));
                     error = true;
-
                 }
             }
         }

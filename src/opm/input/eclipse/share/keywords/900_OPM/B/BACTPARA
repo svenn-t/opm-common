@@ -1,0 +1,34 @@
+{
+    "name": "BACTPARA",
+    "sections": [
+        "PROPS"
+    ],
+    "size": 1,
+    "items": [
+        {
+            "name": "MAX_GROWTH_RATE",
+            "value_type": "DOUBLE",
+            "default": 2.246e-5
+        },
+        {
+            "name": "HALF_VELOCITY_GAS",
+            "value_type": "DOUBLE",
+            "default": 5.018e-8
+        },
+        {
+            "name": "YIELD_COEFFICIENT",
+            "value_type": "DOUBLE",
+            "default": 8.639e12
+        },
+        {
+            "name": "STOICHIOMETRIC_COEFFICIENT",
+            "value_type": "INT",
+            "default": 4
+        },
+        {
+            "name": "DECAY_COEFFICIENT",
+            "value_type": "DOUBLE",
+            "default": 8.565e-7
+        }
+    ]
+}

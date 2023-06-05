@@ -630,6 +630,7 @@ Runspec::Runspec( const Deck& deck )
     , m_h2storage (false)
     , m_micp (false)
     , m_mech (false)
+    , m_microbes (false)
 {
     if (DeckSection::hasRUNSPEC(deck)) {
         const RUNSPECSection runspecSection{deck};
@@ -705,6 +706,11 @@ Runspec::Runspec( const Deck& deck )
         if (runspecSection.hasKeyword<ParserKeywords::MECH>()) {
             m_mech = true;
             const std::string msg = "Simulation will solve for mechanical quantities";
+	}
+
+        if (runspecSection.hasKeyword<ParserKeywords::MICROBES>()) {
+            m_microbes = true;
+            std::string msg = "The microbes option is given. Bacterial consumption of dissolved gas is activated. \n";
             OpmLog::note(msg);
         }
     }
@@ -731,6 +737,7 @@ Runspec Runspec::serializationTestObject()
     result.m_h2storage = true;
     result.m_micp = true;
     result.m_mech = true;
+    result.m_microbes = true;
 
     return result;
 }
@@ -820,6 +827,11 @@ bool Runspec::mech() const noexcept
     return this->m_mech;
 }
 
+bool Runspec::microbes() const noexcept
+{
+    return this->m_microbes;
+}
+
 std::time_t Runspec::start_time() const noexcept
 {
     return this->m_start_time;
@@ -862,6 +874,7 @@ bool Runspec::rst_cmp(const Runspec& full_spec, const Runspec& rst_spec) {
         full_spec.m_h2storage == rst_spec.m_h2storage &&
         full_spec.m_micp == rst_spec.m_micp &&
         full_spec.m_mech == rst_spec.m_mech &&
+        full_spec.m_microbes == rst_spec.m_microbes &&
         Welldims::rst_cmp(full_spec.wellDimensions(), rst_spec.wellDimensions());
 }
 
@@ -883,6 +896,7 @@ bool Runspec::operator==(const Runspec& data) const {
            this->m_h2storage == data.m_h2storage &&
            this->m_micp == data.m_micp &&
            this->m_mech == data.m_mech;
+           this->m_microbes == data.m_microbes;
 }
 
 
