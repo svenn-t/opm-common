@@ -228,12 +228,17 @@ public:
     static Evaluation gasEnthalpy(const Evaluation& temperature,
                                   const Evaluation& pressure)
     {
-        
-        Evaluation u = gasInternalEnergy(temperature, pressure);
-        Evaluation rho = gasDensity(temperature, pressure);
+        // Intermediate calculations
+        Evaluation rho_red = reducedDensity(temperature, pressure);
+        Evaluation T_red = criticalTemperature() / temperature;
+        Scalar R = IdealGas::R;
+
+        Evaluation dphi0_dTred = derivIdealHelmholtzWrtRecipRedTemp(T_red);
+        Evaluation dphir_dTred = derivResHelmholtzWrtRecipRedTemp(T_red, rho_red);
+        Evaluation dphir_dRhoRed = derivResHelmholtzWrtRedRho(T_red, rho_red);
 
         // Table 3
-        return u + (pressure / rho);
+        return R * temperature * (1 + T_red * (dphi0_dTred + dphir_dTred) + rho_red * dphir_dRhoRed) / molarMass();
     }
 
     /*!
@@ -253,18 +258,18 @@ public:
         Evaluation T_red = criticalTemperature() / temperature;
         
         // Intermediate calculations
-        Evaluation cv = gasIsochoricHeatCapacity(temperature, pressure);  // [J/(kg*K)]
         Evaluation dphir_dRhoRed = derivResHelmholtzWrtRedRho(T_red, rho_red);
         Evaluation d2phir_dTred_dRhoRed = secDerivResHelmholtzWrtRecipRedTempAndRedRho(T_red, rho_red);
         Evaluation d2phir_d2RhoRed = secDerivResHelmholtzWrtRedRho(T_red, rho_red);
+        Evaluation d2phi0_d2Tred = secDerivIdealHelmholtzWrtRecipRedTemp(T_red);
+        Evaluation d2phir_d2Tred = secDerivResHelmholtzWrtRecipRedTemp(T_red, rho_red);
         Scalar R = IdealGas::R;
         
-        // Table 3
         Evaluation numerator = 1 + rho_red * dphir_dRhoRed - rho_red * T_red * d2phir_dTred_dRhoRed;
         Evaluation denominator = 1 + 2 * rho_red * dphir_dRhoRed + rho_red * rho_red * d2phir_d2RhoRed;
-        Evaluation cp = cv + R * (numerator * numerator / denominator) / molarMass();  // [J/(kg*K)]
 
-        return cp;
+        // Table 3
+        return R * (-T_red * T_red * (d2phi0_d2Tred + d2phir_d2Tred) + (numerator * numerator / denominator)) / molarMass();  // [J/(kg*K)]
     }
 
     /*!
@@ -288,9 +293,8 @@ public:
 
         // Table 3
         Scalar R = IdealGas::R;
-        Evaluation cv = -R * T_red * T_red * (d2phi0_d2Tred + d2phir_d2Tred);  // [J/(mol*K)]
-        
-        return cv / molarMass();
+     
+        return -R * T_red * T_red * (d2phi0_d2Tred + d2phir_d2Tred) / molarMass();  // [J/(mol*K)]
     }
 
     /*!
