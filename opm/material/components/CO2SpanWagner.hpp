@@ -147,7 +147,7 @@ public:
 
         // Check fmax for a starting xmax. If fmax is not positive we increase xmax until we have fmax >= 0 and 
         // abort if we don't achieve that.
-        Evaluation rho_red_max = 2.0;  // start
+        Evaluation rho_red_max = 4.0;  // start
         Evaluation fmax = rootFindingObj_(rho_red_max, temperature, pg);
         if (Opm::getValue(fmax) <= 0.0) {
             // increase 10 times, and if that does not give fmax > 0, we abort
