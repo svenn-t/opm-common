@@ -1240,7 +1240,8 @@ private:
         // Finalize bracket 
         //
         // Declarations
-        double factor = 1.1;
+        double inc_fac = 1.1;
+        double red_fac = 0.9;
         int max_iter = 100;
 
         // Initial objective function calls
@@ -1262,11 +1263,21 @@ private:
             
             // Check fmin and fmax, and adjust bracket
             if (abs(fmin) < abs(fmax)) {
-                rho_red_min += factor * (rho_red_min - rho_red_max);
+                if (rho_red_min < rho_red_max) {
+                    rho_red_min *= red_fac;
+                }
+                else {
+                    rho_red_min *= inc_fac;
+                }
                 fmin = rootFindingObj_(rho_red_min, T, p);
             }
             else {
-                rho_red_max += factor * (rho_red_max - rho_red_min);
+                if (rho_red_max < rho_red_min) {
+                    rho_red_max *= red_fac;
+                }
+                else {
+                    rho_red_max *= inc_fac;
+                }
                 fmax = rootFindingObj_(rho_red_max, T, p);
             }
         }
