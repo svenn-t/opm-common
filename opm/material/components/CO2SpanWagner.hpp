@@ -141,36 +141,17 @@ public:
     template <class Evaluation> 
     static Evaluation reducedDensity(const Evaluation& temperature, const Evaluation& pg)
     {
-        // Interval for search. xmin = 0.0 is good since it guaranties negative fmin.
-        Evaluation rho_red_min = 0.0;
-        Evaluation fmin = -pg / 1.0e6;  // see Table 3 when rho_red = 0.0
-
-        // Check fmax for a starting xmax. If fmax is not positive we increase xmax until we have fmax >= 0 and 
-        // abort if we don't achieve that.
-        Evaluation rho_red_max = 4.0;  // start
-        Evaluation fmax = rootFindingObj_(rho_red_max, temperature, pg);
-        if (Opm::getValue(fmax) <= 0.0) {
-            // increase 10 times, and if that does not give fmax > 0, we abort
-            for (int i=0; i < 10; ++i) {
-                rho_red_max *= 1.25;
-                fmax = rootFindingObj_(rho_red_max, temperature, pg);
-                if (Opm::getValue(fmax) > 0.0) {
-                    break;
-                }
-                else if (Opm::getValue(fmax) < 0.0 && i == 9) {
-                    throw std::runtime_error("No max reduced density could be found for current pressure!");
-                }
-                else if (Opm::getValue(fmax) == 0.0) {
-                    return rho_red_max;
-                }
-            }
-        }
+        // Generate a bracket for bisection
+        auto [rho_red_min, rho_red_max] = reducedDensityBracket_(temperature, pg);
 
         // Bisection loop
+        Evaluation rho_red;
+        Evaluation fmid;
+        Evaluation fmin = rootFindingObj_(rho_red_min, temperature, pg);
         for (int iteration = 1; iteration < 100; ++iteration) {
             // New midpoint and its obj. value
-            Evaluation rho_red = (rho_red_min + rho_red_max) / 2;
-            Evaluation fmid = rootFindingObj_(rho_red, temperature, pg);
+            rho_red = (rho_red_min + rho_red_max) / 2;
+            fmid = rootFindingObj_(rho_red, temperature, pg);
 
             // Check if midpoint fulfills f=0 or interval is sufficiently small
             if (Opm::abs(fmid) < 1e-6 || Opm::abs((rho_red_max - rho_red_min) / 2) < 1e-6) {
@@ -1086,6 +1067,210 @@ private:
         Evaluation dphir_dRedRho = derivResHelmholtzWrtRedRho(T_red, rho_red);
         Evaluation obj = rho_red * rho_cRT * (1 + rho_red * dphir_dRedRho) - p_MPa;
         return obj;
+    }
+
+    /*!
+    * Derivative of vapor pressure wrt temperature. Needed in saturationTemperature().
+    */
+    template <class Evaluation>
+    static Evaluation derVaporPressure(const Evaluation& T)
+    {
+        static constexpr Scalar a[4] =
+            { -7.0602087, 1.9391218, -1.6463597, -3.2995634 };
+        static constexpr Scalar t[4] =
+            { 1.0, 1.5, 2.0, 4.0 };
+
+        // Exponents needed for vapor pressure (Eq. 3.13 on p. 1524) and its derivative
+        Evaluation exponent = 0;
+        Evaluation exponent_der = 0;
+        Scalar T_c = criticalTemperature();
+        Evaluation Tred = T / T_c;
+        for (int i = 0; i < 4; ++i) {
+            exponent += a[i] * pow(1 - Tred, t[i]);
+            exponent_der += a[i] * t[i] * pow(1 - Tred, t[i] - 1);
+        }
+        exponent *= 1.0/Tred;
+        exponent_der *= 1.0/Tred;
+
+        // Vapor pressure (could call vaporPressure() also, and delete exponent calculation above...)
+        Evaluation ps = exp(exponent)*criticalPressure();
+
+        return (-ps / T_c) * (exponent_der + exponent / Tred);
+    }
+
+    /*!
+    * \brief Saturation temperature
+    */
+    template <class Evaluation>
+    static Evaluation saturationTemperature(const Evaluation& p)
+    {
+        // Some properties for simple referencing
+        Scalar p_c = criticalPressure();
+        Scalar T_c = criticalTemperature();
+        Scalar p_t = triplePressure();
+        Scalar T_t = tripleTemperature();
+
+        // Newton parameters
+        int max_iter = 60;
+        Scalar tol = 1e-7;
+
+        // Initial guess
+        Evaluation Ts = T_c + (p - p_c) * (T_t - T_c) / (p_t - p_c);
+
+        // Newton loop
+        Evaluation ps;
+        Evaluation dps_dT;
+        Evaluation dTs;
+        for (int iter = 1; iter <= max_iter; ++iter) {
+            // Vapor pressure and its derivative
+            ps = vaporPressure(Ts);
+            dps_dT = derVaporPressure(Ts);
+
+            // Newton step
+            dTs = (p - ps) / dps_dT;
+            Ts += dTs;
+
+            // Check tolerance
+            if (abs(dTs) < tol) {
+                return Ts;
+            }
+        }
+        throw std::runtime_error("No saturation temperature could be found using Newton!");
+    }
+
+    template <class Evaluation>
+    static Evaluation saturatedLiquidDensity(const Evaluation& T) {
+        // Reduced temperature
+        Evaluation Tred = T / criticalTemperature();
+
+        // Parameters for calculation
+        static constexpr Scalar a[4] = {1.9245108, -0.62385555, -0.32731127, 0.39245142};
+        static constexpr Scalar t[4] = {0.34, 0.5, 1.6666666666666667, 1.8333333333333333};
+
+        // Calculate vapor density in similar way as in vaporPressure
+        Evaluation exponent = 0;
+        for (int i = 0; i < 4; ++i) {
+            exponent += a[i] * pow(1 - Tred, t[i]);
+        }
+        return criticalDensity() * exp(exponent);
+    }
+
+    template <class Evaluation>
+    static Evaluation saturatedVaporDensity(const Evaluation& T) {
+        // Reduced temperature
+        Evaluation Tred = T / criticalTemperature();
+
+        // Parameters for calculation (different for liquid and vapor)
+        static constexpr Scalar a[5] = {-1.7074879, -0.82274670, -4.6008549, -10.111178, -29.742252};
+        static constexpr Scalar t[5] = {0.340, 0.5, 1., 2.3333333333333335, 4.666666666666667};
+
+        // Calculate vapor density in similar way as in vaporPressure
+        Evaluation exponent = 0;
+        for (int i = 0; i < 5; ++i) {
+            exponent += a[i] * pow(1 - Tred, t[i]);
+        }
+        return criticalDensity() * exp(exponent);
+    }
+    
+    /*!
+    * \brief Bracket for reduced density optimization based on phase region 
+    */
+    template <class Evaluation>
+    static std::pair<Evaluation, Evaluation> reducedDensityBracket_(const Evaluation& T, const Evaluation& p)
+    {
+        // Some properties for simple referencing
+        Scalar p_c = criticalPressure();
+        Scalar T_c = criticalTemperature();
+        Scalar rho_c = criticalDensity();
+
+        // Declare upper and lower bracket
+        Evaluation rho_red_min;
+        Evaluation rho_red_max;
+
+        // 
+        // Sub-critical region
+        //
+        if (p <= p_c && T <= T_c) {
+            // Find the saturation temperature
+            Evaluation T_s = saturationTemperature(p);
+            
+            // Sub-critical, liquid region
+            if (T <= T_s) {
+                // Base lower bracket on saturated liquid density
+                rho_red_min = saturatedLiquidDensity(T) / rho_c;
+
+                // Upper bracket set high
+                rho_red_max = 2000.0 / rho_c;
+            }
+            // Sub-critical, vapor region
+            else {
+                // Base lower estimate on saturated vapor density
+                rho_red_min = saturatedVaporDensity(T) / rho_c;
+
+                // Set upper bracket to a low number and adjust later (code below)
+                rho_red_max = 1e-5;
+            }
+        }
+        // 
+        // Liquid region
+        // 
+        else if (p > p_c && T <= T_c) {
+            // Set lower bracket to a reasonably low value and upper to some high value
+            rho_red_min = 600.0 / rho_c;
+            rho_red_max = 2000.0 / rho_c;
+        }
+        // 
+        // Vapor region
+        // 
+        else if (p <= p_c && T > T_c) {
+            // Set lower bracket to (effectively) zero and upper to some high value
+            rho_red_min = 1e-5;
+            rho_red_max = 2000.0 / rho_c;
+        }
+        // 
+        // Supercritical
+        // 
+        else {
+            // Set lower bracket to a reasonably low value and upper to some high value
+            rho_red_min = 25.0 / rho_c;
+            rho_red_max = 2000.0 / rho_c;
+        }
+
+        // 
+        // Finalize bracket 
+        //
+        // Declarations
+        double factor = 1.1;
+        int max_iter = 100;
+
+        // Initial objective function calls
+        Evaluation fmin = rootFindingObj_(rho_red_min, T, p);
+        Evaluation fmax = rootFindingObj_(rho_red_max, T, p);
+
+        // Loop until fmin and fmax have opposite signs
+        for (int i = 0; i < max_iter; ++i) {
+            // Check if sign is opposite and return bracket if true
+            if (fmin * fmax < 0.0) {
+                // Check order before returning
+                if (rho_red_min > rho_red_max) {
+                    Evaluation tmp = rho_red_max;
+                    rho_red_max = rho_red_min;
+                    rho_red_min = tmp;
+                }
+                return {rho_red_min, rho_red_max};
+            }
+            
+            // Check fmin and fmax, and adjust bracket
+            if (abs(fmin) < abs(fmax)) {
+                rho_red_min += factor * (rho_red_min - rho_red_max);
+                fmin = rootFindingObj_(rho_red_min, T, p);
+            }
+            else {
+                rho_red_max += factor * (rho_red_max - rho_red_min);
+                fmax = rootFindingObj_(rho_red_max, T, p);
+            }
+        }
+        throw std::runtime_error("Failed to generate a bracket for reduced density calculation!");
     }
 };
 
