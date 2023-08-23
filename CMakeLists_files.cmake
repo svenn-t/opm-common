@@ -711,6 +711,7 @@ if(ENABLE_ECL_INPUT)
     examples/wellgraph.cpp
     examples/make_ext_smry.cpp
     examples/co2brinepvt.cpp
+    examples/co2spanwagner.cpp
   )
 endif()
 
@@ -726,6 +727,7 @@ if(ENABLE_ECL_INPUT)
     examples/rst_deck.cpp
     examples/make_esmry.cpp
     examples/co2brinepvt.cpp
+    examples/co2spanwagner.cpp
   )
 endif()
 
@@ -788,6 +790,7 @@ list( APPEND PUBLIC_HEADER_FILES
       opm/material/components/Xylene.hpp
       opm/material/components/SimpleH2O.hpp
       opm/material/components/CO2.hpp
+      opm/material/components/CO2SpanWagner.hpp
       opm/material/components/Mesitylene.hpp
       opm/material/components/SimpleCO2.hpp
       opm/material/components/C10.hpp
