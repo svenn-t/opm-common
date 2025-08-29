@@ -126,6 +126,7 @@ if(ENABLE_ECL_INPUT)
     opm/input/eclipse/EclipseState/EndpointScaling.cpp
     opm/input/eclipse/EclipseState/Phase.cpp
     opm/input/eclipse/EclipseState/Runspec.cpp
+    opm/input/eclipse/EclipseState/SpeciesConfig.cpp
     opm/input/eclipse/EclipseState/TracerConfig.cpp
     opm/input/eclipse/EclipseState/WagHysteresisConfig.cpp
     opm/input/eclipse/EclipseState/Aquifer/AquiferConfig.cpp
@@ -1273,6 +1274,7 @@ if(ENABLE_ECL_INPUT)
        opm/input/eclipse/EclipseState/Grid/MapAxes.hpp
        opm/input/eclipse/EclipseState/Grid/MinpvMode.hpp
        opm/input/eclipse/EclipseState/EndpointScaling.hpp
+       opm/input/eclipse/EclipseState/SpeciesConfig.hpp
        opm/input/eclipse/EclipseState/TracerConfig.hpp
        opm/input/eclipse/EclipseState/WagHysteresisConfig.hpp
        opm/input/eclipse/EclipseState/Tables/DenT.hpp
@@ -1363,6 +1365,7 @@ if(ENABLE_ECL_INPUT)
        opm/input/eclipse/EclipseState/Tables/ImkrvdTable.hpp
        opm/input/eclipse/EclipseState/Tables/Sof3Table.hpp
        opm/input/eclipse/EclipseState/Tables/SgofTable.hpp
+       opm/input/eclipse/EclipseState/Tables/SpeciesVdTable.hpp
        opm/input/eclipse/EclipseState/Tables/TracerVdTable.hpp
        opm/input/eclipse/EclipseState/Tables/BiofilmTable.hpp
        opm/input/eclipse/EclipseState/Tables/DiffMICPTable.hpp

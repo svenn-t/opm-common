@@ -1,0 +1,14 @@
+{
+  "name": "GEOCHEM",
+  "sections": [
+    "RUNSPEC"
+  ],
+  "size": 1,
+  "items": [
+    {
+     "item": 1,
+     "name": "INIT_FILE_NAME",
+      "value_type": "STRING"
+    }
+  ]
+}
