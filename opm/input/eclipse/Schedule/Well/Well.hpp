@@ -480,6 +480,7 @@ public:
     const WellPolymerProperties& getPolymerProperties() const;
     const WellMICPProperties& getMICPProperties() const;
     const WellBrineProperties& getBrineProperties() const;
+    const WellTracerProperties& getSpeciesProperties() const;
     const WellTracerProperties& getTracerProperties() const;
     const WVFPDP& getWVFPDP() const;
     const WVFPEXP& getWVFPEXP() const;
@@ -536,6 +537,7 @@ public:
     bool updateEfficiencyFactor(double efficiency_factor, bool use_efficiency_in_network);
 
     bool updateSolventFraction(double solvent_fraction);
+    bool updateSpecies(std::shared_ptr<WellTracerProperties> species_properties);
     bool updateTracer(std::shared_ptr<WellTracerProperties> tracer_properties);
     bool updateFoamProperties(std::shared_ptr<WellFoamProperties> foam_properties);
     bool updatePolymerProperties(std::shared_ptr<WellPolymerProperties> polymer_properties);
@@ -633,6 +635,7 @@ public:
         serializer(polymer_properties);
         serializer(micp_properties);
         serializer(brine_properties);
+        serializer(species_properties);
         serializer(tracer_properties);
         serializer(connections);
         serializer(production);
@@ -701,6 +704,7 @@ private:
     std::shared_ptr<WellPolymerProperties> polymer_properties{};
     std::shared_ptr<WellMICPProperties> micp_properties{};
     std::shared_ptr<WellBrineProperties> brine_properties{};
+    std::shared_ptr<WellTracerProperties> species_properties{};
     std::shared_ptr<WellTracerProperties> tracer_properties{};
 
     // The WellConnections object cannot be const because of WELPI and the
