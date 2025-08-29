@@ -313,6 +313,7 @@ Well::Well(const RestartIO::RstWell& rst_well,
     polymer_properties(std::make_shared<WellPolymerProperties>()),
     micp_properties(std::make_shared<WellMICPProperties>()),
     brine_properties(std::make_shared<WellBrineProperties>()),
+    species_properties(std::make_shared<WellTracerProperties>()),
     tracer_properties(std::make_shared<WellTracerProperties>()),
     connections(std::make_shared<WellConnections>(order_from_int(rst_well.completion_ordering), headI, headJ)),
     production(std::make_shared<WellProductionProperties>(unit_system_arg, wname)),
@@ -523,6 +524,7 @@ Well::Well(const std::string& wname_arg,
     polymer_properties(std::make_shared<WellPolymerProperties>()),
     micp_properties(std::make_shared<WellMICPProperties>()),
     brine_properties(std::make_shared<WellBrineProperties>()),
+    species_properties(std::make_shared<WellTracerProperties>()),
     tracer_properties(std::make_shared<WellTracerProperties>()),
     connections(std::make_shared<WellConnections>(ordering_arg, headI, headJ)),
     production(std::make_shared<WellProductionProperties>(*unit_system, wname)),
@@ -574,6 +576,7 @@ Well Well::serializationTestObject()
     result.polymer_properties =  std::make_shared<WellPolymerProperties>(WellPolymerProperties::serializationTestObject());
     result.micp_properties =  std::make_shared<WellMICPProperties>(WellMICPProperties::serializationTestObject());
     result.brine_properties = std::make_shared<WellBrineProperties>(WellBrineProperties::serializationTestObject());
+    result.species_properties = std::make_shared<WellTracerProperties>(WellTracerProperties::serializationTestObject());
     result.tracer_properties = std::make_shared<WellTracerProperties>(WellTracerProperties::serializationTestObject());
     result.connections = std::make_shared<WellConnections>(WellConnections::serializationTestObject());
     result.production = std::make_shared<Well::WellProductionProperties>(Well::WellProductionProperties::serializationTestObject());
@@ -849,6 +852,16 @@ bool Well::updateProduction(std::shared_ptr<WellProductionProperties> production
 
     if (*this->production != *production_arg) {
         this->production = std::move(production_arg);
+        return true;
+    }
+
+    return false;
+}
+
+bool Well::updateSpecies(std::shared_ptr<WellTracerProperties> species_properties_arg)
+{
+    if (*this->species_properties != *species_properties_arg) {
+        this->species_properties = std::move(species_properties_arg);
         return true;
     }
 
@@ -1348,6 +1361,11 @@ const WellMICPProperties& Well::getMICPProperties() const
 const WellBrineProperties& Well::getBrineProperties() const
 {
     return *this->brine_properties;
+}
+
+const WellTracerProperties& Well::getSpeciesProperties() const
+{
+    return *this->species_properties;
 }
 
 const WellTracerProperties& Well::getTracerProperties() const
@@ -2111,6 +2129,7 @@ bool Well::operator==(const Well& data) const
         && (this->getPolymerProperties() == data.getPolymerProperties())
         && (this->getMICPProperties() == data.getMICPProperties())
         && (this->getBrineProperties() == data.getBrineProperties())
+        && (this->getSpeciesProperties() == data.getSpeciesProperties())
         && (this->getTracerProperties() == data.getTracerProperties())
         && (this->getProductionProperties() == data.getProductionProperties())
         && (this->getInjectionProperties() == data.getInjectionProperties())

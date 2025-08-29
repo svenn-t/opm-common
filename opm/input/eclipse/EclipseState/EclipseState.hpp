@@ -33,6 +33,7 @@
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
 #include <opm/input/eclipse/EclipseState/SimulationConfig/SimulationConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
+#include <opm/input/eclipse/EclipseState/SpeciesConfig.hpp>
 #include <opm/input/eclipse/EclipseState/TracerConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Co2StoreConfig.hpp>
 #include <opm/input/eclipse/EclipseState/WagHysteresisConfig.hpp>
@@ -127,6 +128,7 @@ namespace Opm {
         const AquiferConfig& aquifer() const;
         const CompositionalConfig& compositionalConfig() const;
         const TracerConfig& tracer() const;
+        const SpeciesConfig& species() const;
         const WagHysteresisConfig& getWagHysteresis() const;
         const Co2StoreConfig& getCo2StoreConfig() const;
 
@@ -163,6 +165,7 @@ namespace Opm {
             serializer(m_transMult);
             serializer(m_faults);
             serializer(m_title);
+            serializer(species_config);
             serializer(tracer_config);
             serializer(wag_hyst_config);
             serializer(co2_store_config);
@@ -201,6 +204,7 @@ namespace Opm {
         AquiferConfig aquifer_config;
         CompositionalConfig compositional_config;
         TransMult m_transMult;
+        SpeciesConfig species_config;
         TracerConfig tracer_config;
         WagHysteresisConfig wag_hyst_config;
         Co2StoreConfig co2_store_config;
