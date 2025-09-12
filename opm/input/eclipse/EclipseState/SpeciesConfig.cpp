@@ -38,12 +38,11 @@ SpeciesConfig::SpeciesConfig(const Deck& deck)
     if (deck.hasKeyword<SPECIES>()) {
         const auto& keyword = deck.get<SPECIES>().back();
         const auto& item = keyword.getRecord(0).getItem<SPECIES::data>();
-        species.resize(item.data_size());
         double inv_volume = 1.0;
 
         OpmLog::info( keyword.location().format("\nInitializing species from {keyword} in {file} line {line}") );
         InfoLogger logger("Species tables", 3);
-        for (std::size_t i = 0; i < item.data_size(); ++i) {
+        for (std::size_t i = 0; i < item.getData<std::string>().size(); ++i) {
             const auto& species_name = item.getTrimmedString(i);
             std::string sblk_name = "SBLK" + species_name;
             std::string svdp_name = "SVDP" + species_name;
