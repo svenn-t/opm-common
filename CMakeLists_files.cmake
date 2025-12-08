@@ -582,6 +582,7 @@ if(ENABLE_ECL_INPUT)
     tests/parser/FIPConfigTests.cpp
     tests/parser/FoamTests.cpp
     tests/parser/FunctionalTests.cpp
+    tests/parser/GeochemistryTests.cpp
     tests/parser/GeomodifierTests.cpp
     tests/parser/GroupTests.cpp
     tests/parser/ImportTests.cpp
@@ -635,6 +636,7 @@ if(ENABLE_ECL_INPUT)
     tests/parser/UnitTests.cpp
     tests/parser/integration/NNCTests.cpp
     tests/parser/WellSolventTests.cpp
+    tests/parser/WellSpeciesTests.cpp
     tests/parser/WellTracerTests.cpp
     tests/parser/WellTests.cpp
     tests/parser/WellTestsLGR.cpp
