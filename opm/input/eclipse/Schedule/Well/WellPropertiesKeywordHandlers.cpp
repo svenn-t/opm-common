@@ -536,13 +536,13 @@ void handleWSPECIES(HandlerContext& handlerContext)
             handlerContext.invalidNamePattern(wellNamePattern);
         }
 
-        const double speciesConcentration = record.getItem("CONCENTRATION").get<UDAValue>(0).getSI();
-        const std::string& speciesName = record.getItem("SPECIES").getTrimmedString(0);
+        const auto spConcentration = record.getItem<ParserKeywords::WSPECIES::CONCENTRATION>().get<UDAValue>(0);
+        const std::string& spName = record.getItem("SPECIES").getTrimmedString(0);
 
         for (const auto& well_name : well_names) {
             auto well = handlerContext.state().wells.get( well_name );
             auto wellSpeciesProperties = std::make_shared<WellTracerProperties>(well.getSpeciesProperties());
-            wellSpeciesProperties->setConcentration(speciesName, speciesConcentration);
+            wellSpeciesProperties->setConcentration(WellTracerProperties::Tracer { spName }, spConcentration);
             if (well.updateSpecies(wellSpeciesProperties))
                 handlerContext.state().wells.update( std::move(well) );
         }
