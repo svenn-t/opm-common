@@ -23,7 +23,7 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
-#include <opm/input/eclipse/EclipseState/SpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/S.hpp>
 
 #include <fmt/format.h>
@@ -32,43 +32,34 @@
 
 namespace Opm {
 
-SpeciesConfig::SpeciesConfig(const Deck& deck)
+void SpeciesConfig::initFromXBLK(const DeckKeyword& sblk_keyword,
+                            const std::string& species_name,
+                            InfoLogger& logger)
 {
-    using SPECIES = ParserKeywords::SPECIES;
-    if (deck.hasKeyword<SPECIES>()) {
-        const auto& keyword = deck.get<SPECIES>().back();
-        const auto& item = keyword.getRecord(0).getItem<SPECIES::data>();
-        double inv_volume = 1.0;
+    double inv_volume = 1.0;
+    auto sblk_conc = sblk_keyword.getRecord(0).getItem(0).getData<double>();
+    logger(sblk_keyword.location().format("Loading species concentration from {keyword} in {file} line {line}"));
 
-        OpmLog::info( keyword.location().format("\nInitializing species from {keyword} in {file} line {line}") );
-        InfoLogger logger("Species tables", 3);
-        for (std::size_t i = 0; i < item.getData<std::string>().size(); ++i) {
-            const auto& species_name = item.getTrimmedString(i);
-            std::string sblk_name = "SBLK" + species_name;
-            std::string svdp_name = "SVDP" + species_name;
+    std::transform(sblk_conc.begin(), sblk_conc.end(), sblk_conc.begin(),
+                    [inv_volume](const auto& c) { return c * inv_volume; });
 
-            if (deck.hasKeyword(sblk_name)) {
-                const auto& sblk_keyword = deck[sblk_name].back();
-                auto sblk_conc = sblk_keyword.getRecord(0).getItem(0).getData<double>();
-                logger(sblk_keyword.location().format("Loading species concentration from {keyword} in {file} line {line}"));
+    this->species.emplace_back(species_name, std::move(sblk_conc));
+}
 
-                std::transform(sblk_conc.begin(), sblk_conc.end(), sblk_conc.begin(),
-                               [inv_volume](const auto& c) { return c * inv_volume; });
-                
-                this->species.emplace_back(species_name, std::move(sblk_conc));
-            }
-            else if (deck.hasKeyword(svdp_name)) {
-                const auto& svdp_keyword = deck[svdp_name].back();
-                auto svdp_table = svdp_keyword.getRecord(0).getItem(0);
-                logger(svdp_keyword.location().format("Loading species concentration from {keyword} in {file} line {line}"));
+void SpeciesConfig::initFromXVDP(const DeckKeyword& svdp_keyword,
+                      const std::string& species_name,
+                      InfoLogger& logger)
+{
+    double inv_volume = 1.0;
+    auto svdp_table = svdp_keyword.getRecord(0).getItem(0);
+    logger(svdp_keyword.location().format("Loading species concentration from {keyword} in {file} line {line}"));
 
-                this->species.emplace_back(species_name, SpeciesVdTable(svdp_table, inv_volume, species.size()));
-            }
-            else {
-                this->species.emplace_back(species_name);
-            }
-        }
-    }
+    this->species.emplace_back(species_name, SpeciesVdTable(svdp_table, inv_volume, species.size()));
+}
+
+void SpeciesConfig::initEmpty(const std::string& species_name)
+{
+    this->species.emplace_back(species_name);
 }
 
 SpeciesConfig SpeciesConfig::serializationTestObject()
@@ -84,8 +75,8 @@ const SpeciesConfig::SpeciesEntry& SpeciesConfig::operator[](std::size_t index) 
 }
 
 const SpeciesConfig::SpeciesEntry& SpeciesConfig::operator[](const std::string& name) const {
-    auto iter = std::find_if(this->species.begin(), this->species.end(), 
-                                [&name](const SpeciesEntry& single_species) 
+    auto iter = std::find_if(this->species.begin(), this->species.end(),
+                                [&name](const SpeciesEntry& single_species)
                                 { return single_species.name == name;}
                             );
 
