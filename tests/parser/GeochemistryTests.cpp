@@ -30,7 +30,9 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
-#include <opm/input/eclipse/EclipseState/SpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/AqueousSpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/MineralConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/IonExchangeConfig.hpp>
 
 using namespace Opm;
 
@@ -43,7 +45,7 @@ static Deck createGeochemDeck()
         )");
 }
 
-static Deck createSpeciesDeck()
+static Deck createAqueousSpeciesDeck()
 {
     return Parser{}.parseString(R"(
         DIMENS
@@ -76,6 +78,73 @@ static Deck createSpeciesDeck()
         )");
 }
 
+static Deck createMineralDeck()
+{
+    return Parser{}.parseString(R"(
+        DIMENS
+        3 3 3/
+        TABDIMS
+        /
+        EQLDIMS
+        /
+
+        GRID
+        DX
+        27*1.0 /
+        DY
+        27*1.0 /
+        DZ
+        27*1.0 /
+        TOPS
+        9*10.0 /
+
+        PROPS
+        MINERAL
+        --calcite   magnesite
+        CAL         MGS /
+
+        SOLUTION
+        MBLKCAL
+        27*0.75 /
+        MVDPMGS
+        5.0  0.25
+        10.0 0.25 /
+        )");
+}
+
+static Deck createIonExchangeDeck()
+{
+    return Parser{}.parseString(R"(
+        DIMENS
+        3 3 3/
+        TABDIMS
+        /
+        EQLDIMS
+        /
+
+        GRID
+        DX
+        27*1.0 /
+        DY
+        27*1.0 /
+        DZ
+        27*1.0 /
+        TOPS
+        9*10.0 /
+
+        PROPS
+        IONEX
+        X Y /
+
+        SOLUTION
+        IBLKX
+        27*3e-3 /
+        IVDPY
+        5.0  3e-4
+        10.0 3e-4 /
+        )");
+}
+
 BOOST_AUTO_TEST_CASE(GeochemDeck) {
     const auto deck = createGeochemDeck();
     Runspec runspec(deck);
@@ -90,11 +159,11 @@ BOOST_AUTO_TEST_CASE(GeochemDeck) {
     BOOST_CHECK(geochem.enabled());
 }
 
-BOOST_AUTO_TEST_CASE(SpeciesConfigDeck) {
-    const auto deck = createSpeciesDeck();
+BOOST_AUTO_TEST_CASE(AqueousSpeciesConfigDeck) {
+    const auto deck = createAqueousSpeciesDeck();
     EclipseState state(deck);
 
-    const SpeciesConfig& species = state.species();
+    const AqueousSpeciesConfig& species = state.species();
     BOOST_CHECK_EQUAL(species.size(), 2U);
 
     const auto& ca_species = species["CA"];
@@ -112,3 +181,46 @@ BOOST_AUTO_TEST_CASE(SpeciesConfigDeck) {
     BOOST_CHECK_EQUAL(na_species.svdp.value().numColumns(), 2U);
 }
 
+BOOST_AUTO_TEST_CASE(MineralConfigDeck) {
+    const auto deck = createMineralDeck();
+    EclipseState state(deck);
+
+    const MineralConfig& mineral = state.mineral();
+    BOOST_CHECK_EQUAL(mineral.size(), 2U);
+
+    const auto& calcite = mineral["CAL"];
+    BOOST_CHECK_EQUAL(calcite.name, "CAL");
+    BOOST_CHECK(calcite.concentration.has_value());
+    BOOST_CHECK(!calcite.svdp.has_value());
+    for (const auto& elem : calcite.concentration.value()) {
+        BOOST_CHECK_CLOSE(elem, 0.75, 1e-5);
+    }
+
+    const auto& magnesite = mineral[1];
+    BOOST_CHECK_EQUAL(magnesite.name, "MGS");
+    BOOST_CHECK(!magnesite.concentration.has_value());
+    BOOST_CHECK(magnesite.svdp.has_value());
+    BOOST_CHECK_EQUAL(magnesite.svdp.value().numColumns(), 2U);
+}
+
+BOOST_AUTO_TEST_CASE(IonExchangeConfigDeck) {
+    const auto deck = createIonExchangeDeck();
+    EclipseState state(deck);
+
+    const IonExchangeConfig& ionex = state.ionExchange();
+    BOOST_CHECK_EQUAL(ionex.size(), 2U);
+
+    const auto& x = ionex["X"];
+    BOOST_CHECK_EQUAL(x.name, "X");
+    BOOST_CHECK(x.concentration.has_value());
+    BOOST_CHECK(!x.svdp.has_value());
+    for (const auto& elem : x.concentration.value()) {
+        BOOST_CHECK_CLOSE(elem, 3e-3, 1e-5);
+    }
+
+    const auto& y = ionex[1];
+    BOOST_CHECK_EQUAL(y.name, "Y");
+    BOOST_CHECK(!y.concentration.has_value());
+    BOOST_CHECK(y.svdp.has_value());
+    BOOST_CHECK_EQUAL(y.svdp.value().numColumns(), 2U);
+}

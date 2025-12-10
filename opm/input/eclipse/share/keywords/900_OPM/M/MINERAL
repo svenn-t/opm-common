@@ -1,0 +1,9 @@
+{
+  "name": "MINERAL",
+  "sections": [
+    "PROPS"
+  ],
+  "data": {
+      "value_type": "STRING"
+    }
+}
