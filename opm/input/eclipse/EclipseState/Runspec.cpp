@@ -587,35 +587,70 @@ bool Nupcol::operator==(const Nupcol& data) const {
 }
 
 
-bool Geochem::operator==(const Geochem& other) const {
-    return this->m_file_name == other.m_file_name;
+bool Geochem::operator==(const Geochem& other) const
+{
+    return this->m_file_name == other.m_file_name &&
+           this->m_mbal_tol == other.m_mbal_tol &&
+           this->m_ph_tol == other.m_ph_tol &&
+           this->m_charge_balance == other.m_charge_balance &&
+           this->m_activated == other.m_activated;
 }
 
-Geochem Geochem::serializationTestObject() {
+Geochem Geochem::serializationTestObject()
+{
     Geochem geochem;
     geochem.m_file_name = "test";
+    geochem.m_mbal_tol = 1e-5;
+    geochem.m_ph_tol = 1e-9;
+    geochem.m_charge_balance = true;
+    geochem.m_activated = false;
     return geochem;
 }
 
-const std::string& Geochem::geochem_file_name() const {
+const std::string& Geochem::geochem_file_name() const
+{
     return this->m_file_name;
 }
 
-bool Geochem::enabled() const {
+double Geochem::mbal_tol() const
+{
+    return this->m_mbal_tol;
+}
+
+double Geochem::ph_tol() const
+{
+    return this->m_ph_tol;
+}
+
+bool Geochem::enabled() const
+{
     return this->m_activated;
 }
 
-Geochem::Geochem(const Deck& deck) {
+bool Geochem::charge_balance() const
+{
+    return this->m_charge_balance;
+}
+
+Geochem::Geochem(const Deck& deck)
+{
     using GEOCHEM = ParserKeywords::GEOCHEM;
     if (deck.hasKeyword<GEOCHEM>()) {
         const auto& keyword = deck.get<GEOCHEM>().back();
         const auto& record = keyword[0];
         this->m_file_name = record.getItem<GEOCHEM::INIT_FILE_NAME>().get<std::string>(0);
+        this->m_mbal_tol = record.getItem<GEOCHEM::MBAL_TOL>().get<double>(0);
+        this->m_ph_tol = record.getItem<GEOCHEM::PH_TOL>().get<double>(0);
         this->m_activated = true;
+
+        // Charge balance
+        const std::string charge = record.getItem<GEOCHEM::ENFORCE_CHARGE_BALANCE>().get<std::string>(0);
+        this->m_charge_balance = charge == "CHARGE";
     }
 }
 
-const Geochem& Runspec::geochem() const {
+const Geochem& Runspec::geochem() const
+{
     return this->m_geochem;
 }
 
