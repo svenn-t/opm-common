@@ -494,6 +494,9 @@ public:
     explicit Geochem(const Deck&);
 
     const std::string& geochem_file_name() const;
+    double mbal_tol() const;
+    double ph_tol() const;
+    bool charge_balance() const;
     bool enabled() const;
 
     template<class Serializer>
@@ -506,6 +509,9 @@ public:
 
 private:
     std::string m_file_name;
+    double m_mbal_tol{};
+    double m_ph_tol{};
+    bool m_charge_balance{false};
     bool m_activated{false};
 };
 
