@@ -1,0 +1,10 @@
+{
+  "name": "MBLK",
+  "deck_name_regex": "MBLK.{1,4}",
+  "sections": [
+    "SOLUTION"
+  ],
+  "data": {
+    "value_type": "DOUBLE"
+  }
+}

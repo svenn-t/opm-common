@@ -20,8 +20,11 @@
 #ifndef SPECIES_CONFIG_HPP
 #define SPECIES_CONFIG_HPP
 
+#include <opm/common/OpmLog/InfoLogger.hpp>
+
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/SpeciesVdTable.hpp>
+#include <opm/input/eclipse/Parser/ParserKeyword.hpp>
 
 #include <optional>
 #include <string>
@@ -67,7 +70,7 @@ public:
     }; // struct SpeciesEntry
 
     SpeciesConfig() = default;
-    SpeciesConfig(const Deck& deck);
+    virtual ~SpeciesConfig() = default;
 
     static SpeciesConfig serializationTestObject();
 
@@ -84,6 +87,15 @@ public:
     {
         serializer(species);
     }
+
+protected:
+    void initFromXBLK(const DeckKeyword& sblk_keyword,
+                      const std::string& species_name,
+                      InfoLogger& logger);
+    void initFromXVDP(const DeckKeyword& svdp_keyword,
+                      const std::string& species_name,
+                      InfoLogger& logger);
+    void initEmpty(const std::string& species_name);
 
 private:
     std::vector<SpeciesEntry> species;
