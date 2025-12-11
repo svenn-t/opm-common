@@ -23,7 +23,7 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
-#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/S.hpp>
 
 #include <fmt/format.h>
@@ -32,7 +32,7 @@
 
 namespace Opm {
 
-void SpeciesConfig::initFromXBLK(const DeckKeyword& sblk_keyword,
+void GenericSpeciesConfig::initFromXBLK(const DeckKeyword& sblk_keyword,
                             const std::string& species_name,
                             InfoLogger& logger)
 {
@@ -46,7 +46,7 @@ void SpeciesConfig::initFromXBLK(const DeckKeyword& sblk_keyword,
     this->species.emplace_back(species_name, std::move(sblk_conc));
 }
 
-void SpeciesConfig::initFromXVDP(const DeckKeyword& svdp_keyword,
+void GenericSpeciesConfig::initFromXVDP(const DeckKeyword& svdp_keyword,
                       const std::string& species_name,
                       InfoLogger& logger)
 {
@@ -57,24 +57,24 @@ void SpeciesConfig::initFromXVDP(const DeckKeyword& svdp_keyword,
     this->species.emplace_back(species_name, SpeciesVdTable(svdp_table, inv_volume, species.size()));
 }
 
-void SpeciesConfig::initEmpty(const std::string& species_name)
+void GenericSpeciesConfig::initEmpty(const std::string& species_name)
 {
     this->species.emplace_back(species_name);
 }
 
-SpeciesConfig SpeciesConfig::serializationTestObject()
+GenericSpeciesConfig GenericSpeciesConfig::serializationTestObject()
 {
-    SpeciesConfig result;
+    GenericSpeciesConfig result;
     result.species = {{"test", {1.0}}};
 
     return result;
 }
 
-const SpeciesConfig::SpeciesEntry& SpeciesConfig::operator[](std::size_t index) const {
+const GenericSpeciesConfig::SpeciesEntry& GenericSpeciesConfig::operator[](std::size_t index) const {
     return this->species.at(index);
 }
 
-const SpeciesConfig::SpeciesEntry& SpeciesConfig::operator[](const std::string& name) const {
+const GenericSpeciesConfig::SpeciesEntry& GenericSpeciesConfig::operator[](const std::string& name) const {
     auto iter = std::find_if(this->species.begin(), this->species.end(),
                                 [&name](const SpeciesEntry& single_species)
                                 { return single_species.name == name;}
@@ -86,23 +86,23 @@ const SpeciesConfig::SpeciesEntry& SpeciesConfig::operator[](const std::string& 
     return *iter;
 }
 
-std::size_t SpeciesConfig::size() const {
+std::size_t GenericSpeciesConfig::size() const {
     return this->species.size();
 }
 
-bool SpeciesConfig::empty() const {
+bool GenericSpeciesConfig::empty() const {
     return this->species.empty();
 }
 
-const std::vector<SpeciesConfig::SpeciesEntry>::const_iterator SpeciesConfig::begin() const {
+const std::vector<GenericSpeciesConfig::SpeciesEntry>::const_iterator GenericSpeciesConfig::begin() const {
     return this->species.begin();
 }
 
-const std::vector<SpeciesConfig::SpeciesEntry>::const_iterator SpeciesConfig::end() const {
+const std::vector<GenericSpeciesConfig::SpeciesEntry>::const_iterator GenericSpeciesConfig::end() const {
     return this->species.end();
 }
 
-bool SpeciesConfig::operator==(const SpeciesConfig& other) const {
+bool GenericSpeciesConfig::operator==(const GenericSpeciesConfig& other) const {
     return this->species == other.species;
 }
 
