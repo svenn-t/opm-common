@@ -25,12 +25,12 @@
 
 namespace Opm {
 
-class AqueousSpeciesConfig : public GenericSpeciesConfig
+class SpeciesConfig : public GenericSpeciesConfig
 {
 public:
-    AqueousSpeciesConfig() = default;
-    AqueousSpeciesConfig(const Deck& deck);
-};  // class AqueousSpeciesConfig
+    SpeciesConfig() = default;
+    SpeciesConfig(const Deck& deck);
+};  // class SpeciesConfig
 
 }  // namespace Opm
 
