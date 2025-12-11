@@ -20,12 +20,12 @@
 #define ION_EXCHANGE_CONFIG_HPP
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.hpp>
 
 
 namespace Opm {
 
-class IonExchangeConfig : public SpeciesConfig
+class IonExchangeConfig : public GenericSpeciesConfig
 {
 public:
     IonExchangeConfig() = default;

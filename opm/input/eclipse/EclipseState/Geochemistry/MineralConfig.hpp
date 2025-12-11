@@ -20,12 +20,12 @@
 #define MINERAL_CONFIG_HPP
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
-#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.hpp>
 
 
 namespace Opm {
 
-class MineralConfig : public SpeciesConfig
+class MineralConfig : public GenericSpeciesConfig
 {
 public:
     MineralConfig() = default;
