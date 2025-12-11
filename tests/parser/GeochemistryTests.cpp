@@ -30,7 +30,7 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
-#include <opm/input/eclipse/EclipseState/Geochemistry/AqueousSpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/MineralConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/IonExchangeConfig.hpp>
 
@@ -45,7 +45,7 @@ static Deck createGeochemDeck()
         )");
 }
 
-static Deck createAqueousSpeciesDeck()
+static Deck createSpeciesDeck()
 {
     return Parser{}.parseString(R"(
         DIMENS
@@ -160,11 +160,11 @@ BOOST_AUTO_TEST_CASE(GeochemDeck) {
     BOOST_CHECK(geochem.enabled());
 }
 
-BOOST_AUTO_TEST_CASE(AqueousSpeciesConfigDeck) {
-    const auto deck = createAqueousSpeciesDeck();
+BOOST_AUTO_TEST_CASE(SpeciesConfigDeck) {
+    const auto deck = createSpeciesDeck();
     EclipseState state(deck);
 
-    const AqueousSpeciesConfig& species = state.species();
+    const SpeciesConfig& species = state.species();
     BOOST_CHECK_EQUAL(species.size(), 2U);
 
     const auto& ca_species = species["CA"];

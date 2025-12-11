@@ -19,12 +19,12 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
-#include <opm/input/eclipse/EclipseState/Geochemistry/AqueousSpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/S.hpp>
 
 namespace Opm {
 
-AqueousSpeciesConfig::AqueousSpeciesConfig(const Deck& deck) {
+SpeciesConfig::SpeciesConfig(const Deck& deck) {
     using SPECIES = ParserKeywords::SPECIES;
     if (deck.hasKeyword<SPECIES>()) {
         const auto& keyword = deck.get<SPECIES>().back();
