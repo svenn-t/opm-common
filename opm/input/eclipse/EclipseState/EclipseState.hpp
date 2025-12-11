@@ -23,7 +23,7 @@
 #include <opm/input/eclipse/EclipseState/Aquifer/AquiferConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Compositional/CompositionalConfig.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseConfig.hpp>
-#include <opm/input/eclipse/EclipseState/Geochemistry/AqueousSpeciesConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/MineralConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/IonExchangeConfig.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -132,7 +132,7 @@ namespace Opm {
         const AquiferConfig& aquifer() const;
         const CompositionalConfig& compositionalConfig() const;
         const TracerConfig& tracer() const;
-        const AqueousSpeciesConfig& species() const;
+        const SpeciesConfig& species() const;
         const MineralConfig& mineral() const;
         const IonExchangeConfig& ionExchange() const;
         const WagHysteresisConfig& getWagHysteresis() const;
@@ -212,7 +212,7 @@ namespace Opm {
         AquiferConfig aquifer_config;
         CompositionalConfig compositional_config;
         TransMult m_transMult;
-        AqueousSpeciesConfig species_config;
+        SpeciesConfig species_config;
         MineralConfig mineral_config;
         IonExchangeConfig ionex_config;
         TracerConfig tracer_config;

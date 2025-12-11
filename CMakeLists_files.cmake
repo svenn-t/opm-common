@@ -124,7 +124,7 @@ if(ENABLE_ECL_INPUT)
     opm/input/eclipse/EclipseState/EclipseConfig.cpp
     opm/input/eclipse/EclipseState/EclipseState.cpp
     opm/input/eclipse/EclipseState/EndpointScaling.cpp
-    opm/input/eclipse/EclipseState/Geochemistry/AqueousSpeciesConfig.cpp
+    opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.cpp
     opm/input/eclipse/EclipseState/Geochemistry/MineralConfig.cpp
     opm/input/eclipse/EclipseState/Geochemistry/IonExchangeConfig.cpp
     opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.cpp
@@ -1184,7 +1184,7 @@ if(ENABLE_ECL_INPUT)
        opm/input/eclipse/Parser/ParserEnums.hpp
        opm/input/eclipse/Parser/ParseContext.hpp
        opm/input/eclipse/Parser/ParserConst.hpp
-       opm/input/eclipse/EclipseState/Geochemistry/AqueousSpeciesConfig.hpp
+       opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp
        opm/input/eclipse/EclipseState/Geochemistry/MineralConfig.hpp
        opm/input/eclipse/EclipseState/Geochemistry/IonExchangeConfig.hpp
        opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.hpp
