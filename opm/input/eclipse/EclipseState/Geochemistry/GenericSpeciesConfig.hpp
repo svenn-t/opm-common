@@ -31,7 +31,7 @@
 
 namespace Opm {
 
-class SpeciesConfig {
+class GenericSpeciesConfig {
 public:
     struct SpeciesEntry {
         std::string name;
@@ -69,10 +69,10 @@ public:
         }
     }; // struct SpeciesEntry
 
-    SpeciesConfig() = default;
-    virtual ~SpeciesConfig() = default;
+    GenericSpeciesConfig() = default;
+    virtual ~GenericSpeciesConfig() = default;
 
-    static SpeciesConfig serializationTestObject();
+    static GenericSpeciesConfig serializationTestObject();
 
     size_t size() const;
     bool empty() const;
@@ -80,7 +80,7 @@ public:
     const std::vector<SpeciesEntry>::const_iterator end() const;
     const SpeciesEntry& operator[](const std::string& name) const;
     const SpeciesEntry& operator[](std::size_t index) const;
-    bool operator==(const SpeciesConfig& data) const;
+    bool operator==(const GenericSpeciesConfig& data) const;
 
     template<class Serializer>
     void serializeOp(Serializer& serializer)
@@ -99,7 +99,7 @@ protected:
 
 private:
     std::vector<SpeciesEntry> species;
-}; // class SpeciesConfig
+}; // class GenericSpeciesConfig
 
 } // namespec Opm
 #endif
