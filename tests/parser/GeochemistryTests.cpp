@@ -41,7 +41,7 @@ static Deck createGeochemDeck()
     return Parser{}.parseString(R"(
         RUNSPEC
         GEOCHEM
-        test.json 1e-3 1e-4 CHARGE /
+        test.json 1e-3 1e-4 CHARGE 10 /
         )");
 }
 
@@ -155,6 +155,7 @@ BOOST_AUTO_TEST_CASE(GeochemDeck) {
     BOOST_CHECK_EQUAL(geochem.geochem_file_name(), file_name);
     BOOST_CHECK_CLOSE(geochem.mbal_tol(), 1e-3, 1e-8);
     BOOST_CHECK_CLOSE(geochem.ph_tol(), 1e-4, 1e-8);
+    BOOST_CHECK_EQUAL(geochem.splay_tree_resolution(), 10);
     BOOST_CHECK(geochem.charge_balance());
     BOOST_CHECK(geochem.enabled());
 }

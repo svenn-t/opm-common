@@ -496,6 +496,7 @@ public:
     const std::string& geochem_file_name() const;
     double mbal_tol() const;
     double ph_tol() const;
+    int splay_tree_resolution() const;
     bool charge_balance() const;
     bool enabled() const;
 
@@ -513,6 +514,7 @@ private:
     double m_ph_tol{};
     bool m_charge_balance{false};
     bool m_activated{false};
+    int m_splay_tree{0};
 };
 
 
