@@ -359,7 +359,7 @@ namespace Opm {
         return this->compositional_config;
     }
 
-    const AqueousSpeciesConfig& EclipseState::species() const {
+    const SpeciesConfig& EclipseState::species() const {
         return this->species_config;
     }
 
