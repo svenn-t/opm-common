@@ -622,6 +622,11 @@ double Geochem::ph_tol() const
     return this->m_ph_tol;
 }
 
+int Geochem::splay_tree_resolution() const
+{
+    return this->m_splay_tree;
+}
+
 bool Geochem::enabled() const
 {
     return this->m_activated;
@@ -641,6 +646,7 @@ Geochem::Geochem(const Deck& deck)
         this->m_file_name = record.getItem<GEOCHEM::INIT_FILE_NAME>().get<std::string>(0);
         this->m_mbal_tol = record.getItem<GEOCHEM::MBAL_TOL>().get<double>(0);
         this->m_ph_tol = record.getItem<GEOCHEM::PH_TOL>().get<double>(0);
+        this->m_splay_tree = record.getItem<GEOCHEM::SPLAY_TREE>().get<int>(0);
         this->m_activated = true;
 
         // Charge balance
