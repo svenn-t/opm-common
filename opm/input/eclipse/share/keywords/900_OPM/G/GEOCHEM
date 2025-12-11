@@ -28,6 +28,12 @@
       "name": "ENFORCE_CHARGE_BALANCE",
       "value_type": "STRING",
       "default": "NOCHARGE"
+    },
+    {
+      "item": 5,
+      "name": "SPLAY_TREE",
+      "value_type": "INT",
+      "default": 0
     }
   ]
 }
