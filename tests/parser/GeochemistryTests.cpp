@@ -48,6 +48,8 @@ static Deck createGeochemDeck()
 static Deck createSpeciesDeck()
 {
     return Parser{}.parseString(R"(
+        GEOCHEM
+        /
         DIMENS
         3 3 3/
         TABDIMS
@@ -81,6 +83,8 @@ static Deck createSpeciesDeck()
 static Deck createMineralDeck()
 {
     return Parser{}.parseString(R"(
+        GEOCHEM
+        /
         DIMENS
         3 3 3/
         TABDIMS
@@ -115,6 +119,8 @@ static Deck createMineralDeck()
 static Deck createIonExchangeDeck()
 {
     return Parser{}.parseString(R"(
+        GEOCHEM
+        /
         DIMENS
         3 3 3/
         TABDIMS
