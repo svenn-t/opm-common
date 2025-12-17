@@ -27,6 +27,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/common/utility/OpmInputError.hpp>
+#include <opm/common/utility/TimeService.hpp>
 
 #include <opm/input/eclipse/Python/Python.hpp>
 
@@ -37,6 +38,7 @@
 #include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
 
 #include <opm/input/eclipse/Schedule/Schedule.hpp>
+#include <opm/input/eclipse/Schedule/SummaryState.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellTracerProperties.hpp>
 
@@ -188,6 +190,7 @@ BOOST_AUTO_TEST_CASE(TestDynamicWSPECIES)
         deck, grid, fp, NumericalAquifers{},
         runspec, std::make_shared<Python>()
     };
+    SummaryState st(TimeService::now(), 0.0);
 
     BOOST_CHECK(deck.hasKeyword("WSPECIES"));
 
@@ -196,13 +199,16 @@ BOOST_AUTO_TEST_CASE(TestDynamicWSPECIES)
 
     const auto& record = keyword.getRecord(0);
     const std::string& well_name = record.getItem("WELL").getTrimmedString(0);
+    const auto well = WellTracerProperties::Well{"W_1"};
+    const auto ca_species = WellTracerProperties::Tracer{"CA"};
+    const auto k_species = WellTracerProperties::Tracer{"K"};
     BOOST_CHECK_EQUAL(well_name, "W_1");
-    BOOST_CHECK_EQUAL(schedule.getWell("W_1", 0).getSpeciesProperties().getConcentration("CA"),0); //default 0
-    BOOST_CHECK_EQUAL(schedule.getWell("W_1", 0).getSpeciesProperties().getConcentration("K"),0); //default 0
-    BOOST_CHECK_EQUAL(schedule.getWell("W_1", 1).getSpeciesProperties().getConcentration("CA"),1);
-    BOOST_CHECK_EQUAL(schedule.getWell("W_1", 2).getSpeciesProperties().getConcentration("CA"),1);
-    BOOST_CHECK_EQUAL(schedule.getWell("W_1", 4).getSpeciesProperties().getConcentration("CA"),0);
-    BOOST_CHECK_EQUAL(schedule.getWell("W_1", 4).getSpeciesProperties().getConcentration("K"),1);
+    BOOST_CHECK_EQUAL(schedule.getWell(well_name, 0).getSpeciesProperties().getConcentration(well, ca_species, st), 0);
+    BOOST_CHECK_EQUAL(schedule.getWell(well_name, 0).getSpeciesProperties().getConcentration(well, k_species, st), 0);
+    BOOST_CHECK_EQUAL(schedule.getWell(well_name, 1).getSpeciesProperties().getConcentration(well, ca_species, st), 1);
+    BOOST_CHECK_EQUAL(schedule.getWell(well_name, 2).getSpeciesProperties().getConcentration(well, ca_species, st), 1);
+    BOOST_CHECK_EQUAL(schedule.getWell(well_name, 4).getSpeciesProperties().getConcentration(well, ca_species, st), 0);
+    BOOST_CHECK_EQUAL(schedule.getWell(well_name, 4).getSpeciesProperties().getConcentration(well, k_species, st), 1);
 }
 
 
