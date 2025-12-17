@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(GeochemDeck) {
     Runspec runspec(deck);
 
     const auto& geochem = runspec.geochem();
-    std::string file_name = "test.json";
+    const std::string file_name = "test.json";
     BOOST_CHECK(geochem.enabled());
     BOOST_CHECK_EQUAL(geochem.geochem_file_name(), file_name);
     BOOST_CHECK_CLOSE(geochem.mbal_tol(), 1e-3, 1e-8);
