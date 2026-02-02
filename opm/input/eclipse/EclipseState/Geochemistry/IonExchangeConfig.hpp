@@ -19,11 +19,11 @@
 #ifndef ION_EXCHANGE_CONFIG_HPP
 #define ION_EXCHANGE_CONFIG_HPP
 
-#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.hpp>
 
-
 namespace Opm {
+
+class Deck;
 
 class IonExchangeConfig : public GenericSpeciesConfig
 {

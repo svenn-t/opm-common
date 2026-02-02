@@ -19,6 +19,7 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
+#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/MineralConfig.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/M.hpp>
 
@@ -30,25 +31,8 @@ MineralConfig::MineralConfig(const Deck& deck) {
         const auto& keyword = deck.get<MINERAL>().back();
         const auto& item = keyword.getRecord(0).getItem<MINERAL::data>();
 
-        OpmLog::info( keyword.location().format("\nInitializing species from {keyword} in {file} line {line}") );
-        InfoLogger logger("Species tables", 3);
-        for (std::size_t i = 0; i < item.getData<std::string>().size(); ++i) {
-            const auto& species_name = item.getTrimmedString(i);
-            std::string mblk_name = "MBLK" + species_name;
-            std::string mvdp_name = "MVDP" + species_name;
-
-            if (deck.hasKeyword(mblk_name)) {
-                const auto& mblk_keyword = deck[mblk_name].back();
-                this->initFromXBLK(mblk_keyword, species_name, logger);
-            }
-            else if (deck.hasKeyword(mvdp_name)) {
-                const auto& mvdp_keyword = deck[mvdp_name].back();
-                this->initFromXVDP(mvdp_keyword, species_name, logger);
-            }
-            else {
-                this->initEmpty(species_name);
-            }
-        }
+        OpmLog::info( keyword.location().format("\nInitializing minerals from {keyword} in {file} line {line}") );
+        this->initializeSpeciesType(item, deck, SpeciesType::MINERAL);
     }
 }
 

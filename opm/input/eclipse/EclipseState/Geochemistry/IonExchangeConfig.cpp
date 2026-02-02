@@ -19,6 +19,7 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
+#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/IonExchangeConfig.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/I.hpp>
 
@@ -30,25 +31,8 @@ IonExchangeConfig::IonExchangeConfig(const Deck& deck) {
         const auto& keyword = deck.get<IONEX>().back();
         const auto& item = keyword.getRecord(0).getItem<IONEX::data>();
 
-        OpmLog::info( keyword.location().format("\nInitializing species from {keyword} in {file} line {line}") );
-        InfoLogger logger("Species tables", 3);
-        for (std::size_t i = 0; i < item.getData<std::string>().size(); ++i) {
-            const auto& species_name = item.getTrimmedString(i);
-            std::string iblk_name = "IBLK" + species_name;
-            std::string ivdp_name = "IVDP" + species_name;
-
-            if (deck.hasKeyword(iblk_name)) {
-                const auto& iblk_keyword = deck[iblk_name].back();
-                this->initFromXBLK(iblk_keyword, species_name, logger);
-            }
-            else if (deck.hasKeyword(ivdp_name)) {
-                const auto& ivdp_keyword = deck[ivdp_name].back();
-                this->initFromXVDP(ivdp_keyword, species_name, logger);
-            }
-            else {
-                this->initEmpty(species_name);
-            }
-        }
+        OpmLog::info( keyword.location().format("\nInitializing ion exchange from {keyword} in {file} line {line}") );
+        this->initializeSpeciesType(item, deck, SpeciesType::IONEX);
     }
 }
 

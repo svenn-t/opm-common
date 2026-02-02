@@ -19,11 +19,11 @@
 #ifndef MINERAL_CONFIG_HPP
 #define MINERAL_CONFIG_HPP
 
-#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/GenericSpeciesConfig.hpp>
 
-
 namespace Opm {
+
+class Deck;
 
 class MineralConfig : public GenericSpeciesConfig
 {

@@ -27,7 +27,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/InputErrorAction.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
@@ -105,10 +107,10 @@ static Deck createMineralDeck()
         PROPS
         MINERAL
         --calcite   magnesite
-        CAL         MGS /
+        CALCITE     MGS /
 
         SOLUTION
-        MBLKCAL
+        MBLKCALCITE
         27*0.75 /
         MVDPMGS
         5.0  0.25
@@ -151,6 +153,40 @@ static Deck createIonExchangeDeck()
         )");
 }
 
+static Deck createSpeciesNameCheckDeck()
+{
+    return Parser{}.parseString(R"(
+        GEOCHEM
+        /
+        DIMENS
+        3 3 3/
+        TABDIMS
+        /
+        EQLDIMS
+        /
+
+        GRID
+        DX
+        27*1.0 /
+        DY
+        27*1.0 /
+        DZ
+        27*1.0 /
+        TOPS
+        9*10.0 /
+
+        PROPS
+        SPECIES
+        CA CA /
+
+        MINERAL
+        MAGNESITE /
+
+        IONEX
+        XCHNGR XCHNGER /
+        )");
+}
+
 BOOST_AUTO_TEST_CASE(GeochemDeck) {
     const auto deck = createGeochemDeck();
     Runspec runspec(deck);
@@ -182,10 +218,12 @@ BOOST_AUTO_TEST_CASE(SpeciesConfigDeck) {
     }
 
     const auto& na_species = species[1];
+    double zPos = 7.5;
     BOOST_CHECK_EQUAL(na_species.name, "NA");
     BOOST_CHECK(!na_species.concentration.has_value());
     BOOST_CHECK(na_species.svdp.has_value());
     BOOST_CHECK_EQUAL(na_species.svdp.value().numColumns(), 2U);
+    BOOST_CHECK_CLOSE(na_species.svdp.value().evaluate("SPECIES_CONCENTRATION", zPos), 1e-4, 1e-5);
 }
 
 BOOST_AUTO_TEST_CASE(MineralConfigDeck) {
@@ -195,8 +233,8 @@ BOOST_AUTO_TEST_CASE(MineralConfigDeck) {
     const MineralConfig& mineral = state.mineral();
     BOOST_CHECK_EQUAL(mineral.size(), 2U);
 
-    const auto& calcite = mineral["CAL"];
-    BOOST_CHECK_EQUAL(calcite.name, "CAL");
+    const auto& calcite = mineral["CALCITE"];
+    BOOST_CHECK_EQUAL(calcite.name, "CALCITE");
     BOOST_CHECK(calcite.concentration.has_value());
     BOOST_CHECK(!calcite.svdp.has_value());
     for (const auto& elem : calcite.concentration.value()) {
@@ -204,10 +242,12 @@ BOOST_AUTO_TEST_CASE(MineralConfigDeck) {
     }
 
     const auto& magnesite = mineral[1];
+    double zPos = 7.5;
     BOOST_CHECK_EQUAL(magnesite.name, "MGS");
     BOOST_CHECK(!magnesite.concentration.has_value());
     BOOST_CHECK(magnesite.svdp.has_value());
     BOOST_CHECK_EQUAL(magnesite.svdp.value().numColumns(), 2U);
+    BOOST_CHECK_CLOSE(magnesite.svdp.value().evaluate("SPECIES_CONCENTRATION", zPos), 0.25, 1e-5);
 }
 
 BOOST_AUTO_TEST_CASE(IonExchangeConfigDeck) {
@@ -226,8 +266,24 @@ BOOST_AUTO_TEST_CASE(IonExchangeConfigDeck) {
     }
 
     const auto& y = ionex[1];
+    double zPos = 7.5;
     BOOST_CHECK_EQUAL(y.name, "Y");
     BOOST_CHECK(!y.concentration.has_value());
     BOOST_CHECK(y.svdp.has_value());
     BOOST_CHECK_EQUAL(y.svdp.value().numColumns(), 2U);
+    BOOST_CHECK_CLOSE(y.svdp.value().evaluate("SPECIES_CONCENTRATION", zPos), 3e-4, 1e-5);
+}
+
+BOOST_AUTO_TEST_CASE(SpeciesNameCheck) {
+    const auto deck = createSpeciesNameCheckDeck();
+
+    // Duplicate error
+    BOOST_CHECK_THROW(SpeciesConfig{deck}, std::runtime_error);
+
+    // Long item name error
+    BOOST_CHECK_THROW(MineralConfig{deck}, std::runtime_error);
+
+    // Same first four character error
+    BOOST_CHECK_THROW(IonExchangeConfig{deck}, std::runtime_error);
+
 }
