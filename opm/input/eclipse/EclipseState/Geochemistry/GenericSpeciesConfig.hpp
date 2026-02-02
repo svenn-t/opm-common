@@ -22,7 +22,6 @@
 
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
-#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/SpeciesVdTable.hpp>
 #include <opm/input/eclipse/Parser/ParserKeyword.hpp>
 
@@ -30,6 +29,15 @@
 #include <string>
 
 namespace Opm {
+
+class Deck;
+class DeckItem;
+
+enum class SpeciesType {
+    SPECIES,
+    MINERAL,
+    IONEX
+};
 
 class GenericSpeciesConfig {
 public:
@@ -74,7 +82,7 @@ public:
 
     static GenericSpeciesConfig serializationTestObject();
 
-    size_t size() const;
+    std::size_t size() const;
     bool empty() const;
     const std::vector<SpeciesEntry>::const_iterator begin() const;
     const std::vector<SpeciesEntry>::const_iterator end() const;
@@ -89,6 +97,7 @@ public:
     }
 
 protected:
+    void initializeSpeciesType(const DeckItem& item, const Deck& deck, SpeciesType s);
     void initFromXBLK(const DeckKeyword& sblk_keyword,
                       const std::string& species_name,
                       InfoLogger& logger);
@@ -96,6 +105,7 @@ protected:
                       const std::string& species_name,
                       InfoLogger& logger);
     void initEmpty(const std::string& species_name);
+    void checkSpeciesName(const std::string& species_name, SpeciesType s);
 
 private:
     std::vector<SpeciesEntry> species;

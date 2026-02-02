@@ -19,6 +19,7 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/OpmLog/InfoLogger.hpp>
 
+#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Geochemistry/SpeciesConfig.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/S.hpp>
 
@@ -31,24 +32,7 @@ SpeciesConfig::SpeciesConfig(const Deck& deck) {
         const auto& item = keyword.getRecord(0).getItem<SPECIES::data>();
 
         OpmLog::info( keyword.location().format("\nInitializing species from {keyword} in {file} line {line}") );
-        InfoLogger logger("Species tables", 3);
-        for (std::size_t i = 0; i < item.getData<std::string>().size(); ++i) {
-            const auto& species_name = item.getTrimmedString(i);
-            std::string sblk_name = "SBLK" + species_name;
-            std::string svdp_name = "SVDP" + species_name;
-
-            if (deck.hasKeyword(sblk_name)) {
-                const auto& sblk_keyword = deck[sblk_name].back();
-                this->initFromXBLK(sblk_keyword, species_name, logger);
-            }
-            else if (deck.hasKeyword(svdp_name)) {
-                const auto& svdp_keyword = deck[svdp_name].back();
-                this->initFromXVDP(svdp_keyword, species_name, logger);
-            }
-            else {
-                this->initEmpty(species_name);
-            }
-        }
+        this->initializeSpeciesType(item, deck, SpeciesType::SPECIES);
     }
 }
 

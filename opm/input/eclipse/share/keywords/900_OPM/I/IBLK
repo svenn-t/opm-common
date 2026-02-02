@@ -1,6 +1,6 @@
 {
   "name": "IBLK",
-  "deck_name_regex": "IBLK.{1,4}",
+  "deck_name_regex": "IBLK.+",
   "sections": [
     "SOLUTION"
   ],

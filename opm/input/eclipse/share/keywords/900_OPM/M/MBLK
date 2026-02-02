@@ -1,6 +1,6 @@
 {
   "name": "MBLK",
-  "deck_name_regex": "MBLK.{1,4}",
+  "deck_name_regex": "MBLK.+",
   "sections": [
     "SOLUTION"
   ],
