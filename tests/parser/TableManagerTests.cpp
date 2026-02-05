@@ -198,6 +198,24 @@ Opm::Deck createSingleRecordDeckWithJFuncBrokenDirection() {
     return parser.parseString(deckData);
 }
 
+Opm::Deck createDeckWithRSCONST()
+{
+    return Opm::Parser{}.parseString(R"(RUNSPEC
+OIL
+WATER
+METRIC
+
+TABDIMS
+  1 /
+
+PROPS
+RSCONST
+  0.37 101.5 /
+
+END
+)");
+}
+
 
 /// used in BOOST_CHECK_CLOSE
 static float epsilon() {
@@ -223,6 +241,24 @@ BOOST_AUTO_TEST_CASE( CreateTablesWithVd ) {
     BOOST_CHECK( tables.useEnptvd() );
 }
 
+BOOST_AUTO_TEST_CASE(CreateTablesWithRSCONST)
+{
+    const auto deck = createDeckWithRSCONST();
+    Opm::TableManager tables(deck);
+
+    const auto& rsconstTables = tables.getRsconstTables();
+    BOOST_REQUIRE_EQUAL(rsconstTables.size(), 1U);
+
+    const auto& rsCol = rsconstTables[0].getColumn(0);
+    const auto& pbCol = rsconstTables[0].getColumn(1);
+
+    BOOST_REQUIRE_EQUAL(rsCol.size(), 1U);
+    BOOST_REQUIRE_EQUAL(pbCol.size(), 1U);
+
+    BOOST_CHECK_CLOSE(rsCol[0], 0.37, epsilon());
+    BOOST_CHECK_CLOSE(pbCol[0], 101.5 * Opm::unit::barsa, 1e-8);
+}
+
 BOOST_AUTO_TEST_CASE( CreateTablesWithJFunc ) {
     auto deck = createSingleRecordDeckWithJFunc();
     Opm::TableManager tables(deck);
@@ -241,7 +277,7 @@ BOOST_AUTO_TEST_CASE( CreateTablesWithJFunc ) {
     for (size_t tab = 0; tab < swfnTab.size(); tab++) {
         const auto& t = swfnTab.getTable(tab);
 
-        //TODO uncomment BOOST_CHECK_THROW( t.getColumn("PCOW"), std::invalid_argument );
+       //TODO uncomment BOOST_CHECK_THROW( t.getColumn("PCOW"), std::invalid_argument );
 
         for (size_t c_idx = 0; c_idx < t.numColumns(); c_idx++) {
             const auto& col = t.getColumn(c_idx);
@@ -253,7 +289,7 @@ BOOST_AUTO_TEST_CASE( CreateTablesWithJFunc ) {
     }
 
     const auto& tt = swfnTab.getTable<Opm::SwfnTable>(0);
-    //TODO uncomment BOOST_CHECK_THROW(tt.getPcowColumn(), std::invalid_argument);
+    //TODO uncommentBOOST_CHECK_THROW(tt.getPcowColumn(), std::invalid_argument);
 
     const auto& col = tt.getJFuncColumn();
     for (size_t i = 0; i < col.size(); i++) {

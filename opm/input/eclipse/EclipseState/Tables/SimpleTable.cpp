@@ -217,12 +217,12 @@ namespace Opm {
         // (std::invalid_argument).
         if (m_jfunc) {
             std::cerr << "Developer warning: Pressure column "
-                "is read with JFUNC in deck.\n";
+                      << "is read with JFUNC in deck.\n";
+            return;
         }
-        else {
-            std::cerr << "Developer warning: Raw values from JFUNC column "
-                "is read, but JFUNC not provided in deck.\n";
-        }
+
+        std::cerr << "Developer warning: Raw values from JFUNC column "
+                  << "is read, but JFUNC not provided in deck.\n";
     }
 
     bool SimpleTable::operator==(const SimpleTable& data) const

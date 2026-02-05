@@ -81,6 +81,7 @@
 #include <opm/input/eclipse/EclipseState/Tables/RockwnodTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/OverburdTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/RsvdTable.hpp>
+#include <opm/input/eclipse/EclipseState/Tables/RsconstTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/PbvdTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/PdvdTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/RtempvdTable.hpp>
@@ -321,6 +322,8 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
         result.m_tabdims = Tabdims::serializationTestObject();
         result.m_regdims = Regdims::serializationTestObject();
         result.m_eqldims = Eqldims::serializationTestObject();
+        result.m_aqudims = Aqudims::serializationTestObject();
+
         result.hasImptvd = true;
         result.hasEnptvd = true;
         result.hasEqlnum = true;
@@ -462,6 +465,7 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
 
         addTables( "PVDG", m_tabdims.getNumPVTTables());
         addTables( "PVDO", m_tabdims.getNumPVTTables());
+        addTables( "RSCONST", 1);
         addTables( "PVDS", m_tabdims.getNumPVTTables());
 
         addTables( "SPECHEAT", m_tabdims.getNumPVTTables());
@@ -615,6 +619,7 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
 
         initPlyrockTables(deck);
         initPlymaxTables(deck);
+        initRsconstTables(deck);
         initRTempTables(deck);
         initZmfvdTables(deck);
         initRocktabTables(deck);
@@ -855,7 +860,19 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
         }
     }
 
+    void TableManager::initRsconstTables(const Deck& deck) {
+        const std::string keywordName = "RSCONST";
+        if (!deck.hasKeyword(keywordName)) {
+            return;
+        }
 
+        const auto& keyword = deck[keywordName].back();
+
+        auto& container = forceGetTables(keywordName, 1);
+        const auto& tableRecord = keyword.getRecord(0);
+        std::shared_ptr<RsconstTable> table = std::make_shared<RsconstTable>(tableRecord);
+        container.addTable(0, table);
+    }
 
     void TableManager::initRocktabTables(const Deck& deck) {
         if (!deck.hasKeyword("ROCKTAB"))
@@ -1117,6 +1134,10 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
     const TableContainer& TableManager::getAqutabTables() const {
         return getTables("AQUTAB");
     }
+
+     const TableContainer& TableManager::getRsconstTables() const {
+        return getTables("RSCONST");
+   }
 
     const TableContainer& TableManager::getFoamadsTables() const {
         return getTables("FOAMADS");
@@ -1653,8 +1674,7 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
     void TableManager::initSimpleTableContainer(const Deck& deck,
                                                 const std::string& keywordName,
                                                 const std::string& tableName,
-                                                size_t numTables)
-    {
+                                                size_t numTables) {
         if (!deck.hasKeyword(keywordName)) {
             return; // the table is not featured by the deck...
         }
