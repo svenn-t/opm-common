@@ -286,6 +286,45 @@ bool is_neighbor(const EclipseGrid& grid, std::size_t g1, std::size_t g2) {
         return true;
     }
 
+    bool
+    NNC::addNNC(const size_t cell1,
+                const size_t cell2,
+                const double trans,
+                const double w_avg,
+                const double w_prod,
+                const double face_area,
+                const double bndry_area,
+                const double norm_dist,
+                const double cell_length,
+                const int face_id)
+    {
+        if (cell1 > cell2) {
+            return this->addNNC(cell2,
+                                cell1,
+                                trans,
+                                1.0 - w_avg,
+                                w_prod,
+                                face_area,
+                                bndry_area,
+                                norm_dist,
+                                cell_length,
+                                face_id);
+        }
+        const auto nnc = NNCdata(cell1,
+                                 cell2,
+                                 trans,
+                                 w_avg,
+                                 w_prod,
+                                 face_area,
+                                 bndry_area,
+                                 norm_dist,
+                                 cell_length,
+                                 face_id);
+        const auto insert_iter = std::lower_bound(this->m_input.begin(), this->m_input.end(), nnc);
+        this->m_input.insert(insert_iter, nnc);
+        return true;
+    }
+
     void NNC::merge(const std::vector<NNCdata>& data) {
         auto old_size = m_input.size();
         m_input.insert(m_input.end(), data.begin(), data.end());

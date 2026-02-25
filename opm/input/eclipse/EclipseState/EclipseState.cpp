@@ -319,7 +319,22 @@ namespace Opm {
 
     void EclipseState::appendInputNNC(const std::vector<NNCdata>& nnc) {
         for (const auto& nnc_data : nnc ) {
-            this->m_inputNnc.addNNC(nnc_data.cell1, nnc_data.cell2, nnc_data.trans);
+            if (nnc_data.weightAvg > 0.0 || nnc_data.weightProd > 0.0 || nnc_data.faceArea > 0.0
+                || nnc_data.bndryArea > 0.0 || nnc_data.cellLength > 0.0 || nnc_data.normDist >
+                0.0) {
+                this->m_inputNnc.addNNC(nnc_data.cell1,
+                                        nnc_data.cell2,
+                                        nnc_data.trans,
+                                        nnc_data.weightAvg,
+                                        nnc_data.weightProd,
+                                        nnc_data.faceArea,
+                                        nnc_data.bndryArea,
+                                        nnc_data.normDist,
+                                        nnc_data.cellLength,
+                                        nnc_data.faceId);
+            } else {
+                this->m_inputNnc.addNNC(nnc_data.cell1, nnc_data.cell2, nnc_data.trans);
+            }
         }
     }
 
