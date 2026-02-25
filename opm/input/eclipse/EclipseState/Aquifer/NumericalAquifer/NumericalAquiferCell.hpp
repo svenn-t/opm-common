@@ -20,6 +20,8 @@
 #ifndef OPM_NUMERICALAQUIFERCELL_HPP
 #define OPM_NUMERICALAQUIFERCELL_HPP
 
+#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
+
 #include <cstddef>
 #include <optional>
 
@@ -38,6 +40,10 @@ namespace Opm {
         double porosity{};
         double permeability{};
         double depth{};
+        double biotcoef{};
+        double smodulus{};
+        double lame{};
+        FaceDir::DirEnum face_dir{FaceDir::Unknown};
         std::optional<double> init_pressure{};
         int pvttable{};
         int sattable{};
@@ -48,6 +54,8 @@ namespace Opm {
         double poreVolume() const;
         double transmissiblity() const;
         bool operator == (const NumericalAquiferCell& other) const;
+
+        double tpsaWeight() const;
 
         template<class Serializer>
         void serializeOp(Serializer& serializer) {
@@ -65,6 +73,10 @@ namespace Opm {
             serializer(this->sattable);
             serializer(this->global_index);
             serializer(this->record_id);
+            serializer(this->biotcoef);
+            serializer(this->smodulus);
+            serializer(this->lame);
+            serializer(this->face_dir);
         }
     };
 }

@@ -57,6 +57,29 @@
     {
       "name": "SAT_TABLE_NUM",
       "value_type": "INT"
+    },
+    {
+      "name": "BIOTCOEF",
+      "value_type": "DOUBLE",
+      "dimension": "1",
+      "default": 0.0
+    },
+    {
+      "name": "SMODULUS",
+      "value_type": "DOUBLE",
+      "dimension": "Ymodule",
+      "default": 0.0
+    },
+    {
+      "name": "LAME",
+      "value_type": "DOUBLE",
+      "dimension": "Ymodule",
+      "default": 0.0
+    },
+    {
+      "name": "CONNECT_FACE",
+      "value_type": "STRING",
+      "default": "UNKNOWN"
     }
   ]
 }
