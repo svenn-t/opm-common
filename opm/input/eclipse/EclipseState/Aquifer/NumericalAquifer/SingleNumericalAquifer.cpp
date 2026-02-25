@@ -88,8 +88,15 @@ namespace Opm {
         std::unordered_map<size_t, AquiferCellProps> aqucellprops;
         for (const auto& cell : this->cells_) {
             aqucellprops.emplace(std::make_pair(cell.global_index,
-                               AquiferCellProps{cell.cellVolume(), cell.poreVolume(), cell.depth,
-                                                cell.porosity, cell.sattable, cell.pvttable}));
+                                                AquiferCellProps{cell.cellVolume(),
+                                                                 cell.poreVolume(),
+                                                                 cell.depth,
+                                                                 cell.porosity,
+                                                                 cell.sattable,
+                                                                 cell.pvttable,
+                                                                 cell.biotcoef,
+                                                                 cell.smodulus,
+                                                                 cell.lame}));
         }
         return aqucellprops;
     }
@@ -104,12 +111,49 @@ namespace Opm {
             const double trans1 = this->cells_[i].transmissiblity();
             const double trans2 = this->cells_[i + 1].transmissiblity();
             const double tran = 1. / (1. / trans1 + 1. / trans2);
-            const size_t gc1 = this->cells_[i].global_index;
-            const size_t gc2 = this->cells_[i + 1].global_index;
-            if (gc1 < gc2) {
-                nncs.emplace_back(gc1, gc2, tran);
+            const size_t gc1 = this->cells_[i + 1].global_index;
+            const size_t gc2 = this->cells_[i].global_index;
+            if (this->cells_[i].tpsaWeight() > 0.0 && this->cells_[i + 1].tpsaWeight() > 0.0) {
+                const double w1 = this->cells_[i + 1].tpsaWeight();
+                const double w2 = this->cells_[i].tpsaWeight();
+                const double w_avg = w1 / (w1 + w2);
+                const double w_prod = w1 * w2;
+                const double area = this->cells_[i].area;
+                const double cell_area = this->cells_[i + 1].area;
+                const double cell_length = this->cells_[i + 1].length;
+                const double norm_dist
+                    = 0.5 * (this->cells_[i].length + cell_length);
+                const int face_id = FaceDir::ToIntersectionIndex(this->cells_[i].face_dir);
+                const int cell_face_id = face_id % 2 == 0 ? face_id + 1 : face_id - 1;
+                if (gc1 < gc2) {
+                    nncs.emplace_back(gc1,
+                                      gc2,
+                                      tran,
+                                      w_avg,
+                                      w_prod,
+                                      area,
+                                      cell_area,
+                                      norm_dist,
+                                      cell_length,
+                                      cell_face_id);
+                } else {
+                    nncs.emplace_back(gc2,
+                                      gc1,
+                                      tran,
+                                      1.0 - w_avg,
+                                      w_prod,
+                                      area,
+                                      cell_area,
+                                      norm_dist,
+                                      cell_length,
+                                      face_id);
+                }
             } else {
-                nncs.emplace_back(gc2, gc1, tran);
+                if (gc1 < gc2) {
+                    nncs.emplace_back(gc1, gc2, tran);
+                } else {
+                    nncs.emplace_back(gc2, gc1, tran);
+                }
             }
         }
         return nncs;
@@ -171,10 +215,48 @@ namespace Opm {
             const double trans_con = 2 * cell_multxyz * cell_perm * face_area * ntg[grid.activeIndex(con.global_index)] / d;
 
             const double tran = trans_con * trans_cell / (trans_con + trans_cell) * con.trans_multipler;
-            if (gc1 < gc2) {
-                nncs.emplace_back(gc1, gc2, tran);
+
+            if (const double cell_smodulus = fp.get_double("SMODULUS")[grid.activeIndex(gc2)];
+                cell1.tpsaWeight() > 0.0 && cell_smodulus > 0.0) {
+                const double w1 = cell1.tpsaWeight();
+                const double w2 = d / 2.0 / cell_smodulus;
+                const double w_avg = w1 / (w1 + w2);
+                const double w_prod = w1 * w2;
+                const double area = face_area;
+                const double cell_area = cell1.area;
+                const double cell_length = cell1.length;
+                const double norm_dist = 0.5 * (cell_length + d);
+                const int face_id = FaceDir::ToIntersectionIndex(con.face_dir);
+                const int cell_face_id = face_id % 2 == 0 ? face_id + 1 : face_id - 1;
+                if (gc1 < gc2) {
+                    nncs.emplace_back(gc1,
+                                      gc2,
+                                      tran,
+                                      w_avg,
+                                      w_prod,
+                                      area,
+                                      cell_area,
+                                      norm_dist,
+                                      cell_length,
+                                      cell_face_id);
+                } else {
+                    nncs.emplace_back(gc2,
+                                      gc1,
+                                      tran,
+                                      1.0 - w_avg,
+                                      w_prod,
+                                      area,
+                                      cell_area,
+                                      norm_dist,
+                                      cell_length,
+                                      face_id);
+                }
             } else {
-                nncs.emplace_back(gc2, gc1, tran);
+                if (gc1 < gc2) {
+                    nncs.emplace_back(gc1, gc2, tran);
+                } else {
+                    nncs.emplace_back(gc2, gc1, tran);
+                }
             }
         }
         return nncs;
