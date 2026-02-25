@@ -2323,6 +2323,9 @@ void FieldProps::apply_numerical_aquifers(const NumericalAquifers& numerical_aqu
     auto& permx_data = this->init_get<double>("PERMX").data;
     auto& permy_data = this->init_get<double>("PERMY").data;
     auto& permz_data = this->init_get<double>("PERMZ").data;
+    auto& biotc_data = this->init_get<double>("BIOTCOEF").data;
+    auto& smod_data = this->init_get<double>("SMODULUS").data;
+    auto& lame_data = this->init_get<double>("LAME").data;
 
     const auto& aqu_cell_props = numerical_aquifers.aquiferCellProps();
     for (const auto& [global_index, cellprop] : aqu_cell_props) {
@@ -2334,6 +2337,9 @@ void FieldProps::apply_numerical_aquifers(const NumericalAquifers& numerical_aqu
         poro_data[active_index] = cellprop.porosity;
         satnum_data[active_index] = cellprop.satnum;
         pvtnum_data[active_index] = cellprop.pvtnum;
+        biotc_data[active_index] = cellprop.biotcoef;
+        smod_data[active_index] = cellprop.smodulus;
+        lame_data[active_index] = cellprop.lame;
 
         // isolate the numerical aquifer cells by setting permeability to be zero
         permx_data[active_index] = 0.;

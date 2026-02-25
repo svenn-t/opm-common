@@ -38,6 +38,9 @@ namespace Opm {
         , area (record.getItem<AQUNUM::CROSS_SECTION>().getSIDouble(0) )
         , length ( record.getItem<AQUNUM::LENGTH>().getSIDouble(0) )
         , permeability( record.getItem<AQUNUM::PERM>().getSIDouble(0) )
+        , biotcoef(record.getItem<AQUNUM::BIOTCOEF>().getSIDouble(0))
+        , smodulus(record.getItem<AQUNUM::SMODULUS>().getSIDouble(0))
+        , lame(record.getItem<AQUNUM::LAME>().getSIDouble(0))
     {
         const auto& poro = field_props.get_double("PORO");
         const auto& pvtnum = field_props.get_int("PVTNUM");
@@ -74,6 +77,13 @@ namespace Opm {
             this->sattable = satnum[active_index];
         }
 
+        if (!record.getItem<AQUNUM::CONNECT_FACE>().defaultApplied(0)) {
+            this->face_dir = FaceDir::FromString(
+                record.getItem<AQUNUM::CONNECT_FACE>().getTrimmedString(0));
+        } else {
+            this->face_dir = FaceDir::Unknown;
+        }
+
         this->record_id = record_id_;
     }
 
@@ -95,7 +105,11 @@ namespace Opm {
                this->pvttable == other.pvttable &&
                this->sattable == other.sattable &&
                this->global_index == other.global_index &&
-               this->record_id == other.record_id;
+               this->record_id == other.record_id &&
+               this->biotcoef == other.biotcoef &&
+               this->smodulus == other.smodulus &&
+               this->lame == other.lame &&
+               this->face_dir == other.face_dir;
     }
 
     double NumericalAquiferCell::poreVolume() const {
@@ -105,4 +119,14 @@ namespace Opm {
     double NumericalAquiferCell::transmissiblity() const {
         return 2. * this->permeability * this->area / this->length;;
     }
-}
+
+    double
+    NumericalAquiferCell::tpsaWeight() const
+    {
+        // Avoid division by zero
+        if (this->smodulus <= 1e-16) {
+            return 0.0;
+        }
+        return this->length / 2.0 / this->smodulus;
+    }
+} // namespace Opm
