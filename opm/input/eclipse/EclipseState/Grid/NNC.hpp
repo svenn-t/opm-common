@@ -20,6 +20,7 @@
 #ifndef OPM_PARSER_NNC_HPP
 #define OPM_PARSER_NNC_HPP
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <tuple>
@@ -36,14 +37,38 @@ class GridDims;
 struct NNCdata {
     NNCdata(size_t c1, size_t c2, double t)
         : cell1(c1), cell2(c2), trans(t)
-    {}
+    {
+    }
+
+    NNCdata(size_t c1,
+            size_t c2,
+            double t,
+            double w_avg,
+            double w_prod,
+            double area,
+            double boundary_area,
+            double norm_dist,
+            double cell_length,
+            int face_id)
+        : cell1(c1), cell2(c2), trans(t), weightAvg(w_avg), weightProd(w_prod), faceArea(area),
+          bndryArea(boundary_area), normDist(norm_dist), cellLength(cell_length), faceId(face_id)
+    {
+    }
+
     NNCdata() = default;
 
     bool operator==(const NNCdata& data) const
     {
         return cell1 == data.cell1 &&
                cell2 == data.cell2 &&
-               trans == data.trans;
+               trans == data.trans &&
+               weightAvg == data.weightAvg &&
+               weightProd == data.weightProd &&
+               faceArea == data.faceArea &&
+               bndryArea == data.bndryArea &&
+               normDist == data.normDist &&
+               cellLength == data.cellLength &&
+               faceId == data.faceId;
     }
 
     template<class Serializer>
@@ -52,6 +77,13 @@ struct NNCdata {
         serializer(cell1);
         serializer(cell2);
         serializer(trans);
+        serializer(weightAvg);
+        serializer(weightProd);
+        serializer(faceArea);
+        serializer(bndryArea);
+        serializer(normDist);
+        serializer(cellLength);
+        serializer(faceId);
     }
 
     // Observe that the operator< is only for cell ordering and does not consider the
@@ -64,8 +96,14 @@ struct NNCdata {
     size_t cell1{};
     size_t cell2{};
     double trans{};
+    double weightAvg{};
+    double weightProd{};
+    double faceArea{};
+    double bndryArea{};
+    double normDist{};
+    double cellLength{};
+    int faceId{};
 };
-
 
 
 class Deck;
@@ -110,6 +148,17 @@ public:
     static NNC serializationTestObject();
 
     virtual bool addNNC(const size_t cell1, const size_t cell2, const double trans);
+
+    bool addNNC(const size_t cell1,
+                const size_t cell2,
+                const double trans,
+                const double w_avg,
+                const double w_prod,
+                const double face_area,
+                const double bndry_area,
+                const double norm_dist,
+                const double cell_length,
+                const int face_id);
 
     /// \brief Merge additional NNCs into sorted NNCs
     virtual void merge(const std::vector<NNCdata>& nncs);

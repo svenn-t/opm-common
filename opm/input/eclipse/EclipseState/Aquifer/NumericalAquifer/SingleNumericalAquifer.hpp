@@ -39,6 +39,9 @@ namespace Opm {
         double porosity;
         int satnum;
         int pvtnum;
+        double biotcoef;
+        double smodulus;
+        double lame;
     };
 
     class SingleNumericalAquifer
