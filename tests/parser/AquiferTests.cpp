@@ -21,10 +21,11 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <opm/input/eclipse/EclipseState/Aquifer/Aquancon.hpp>
 #include <opm/input/eclipse/EclipseState/Aquifer/AquiferCT.hpp>
-#include <opm/input/eclipse/EclipseState/Aquifer/Aquifetp.hpp>
-#include <opm/input/eclipse/EclipseState/Aquifer/AquiferFlux.hpp>
 #include <opm/input/eclipse/EclipseState/Aquifer/AquiferConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Aquifer/AquiferFlux.hpp>
+#include <opm/input/eclipse/EclipseState/Aquifer/Aquifetp.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
 
 #include <opm/input/eclipse/Units/Units.hpp>
@@ -698,6 +699,12 @@ PERMY
     360*1000./
 PERMZ
     360*10./
+BIOTCOEF
+    360*1.0 /
+SMODULUS
+    360*1.5/
+LAME
+    360*2.5 /
 
 BOX
 1	8 15 15 3 3 /
@@ -712,10 +719,10 @@ ACTNUM
 0 1 0 0 356*1 /
 
 AQUNUM
---AQnr.  I  J  K     Area      Length PHI      K     Depth  Initial.Pr	PVTNUM   SATNUM
-   1     1  1  1   1000000.0   10000   0.25   400    2585.00   285.00	 2   2  /
-   1     3  1  1   1500000.0   20000   0.24   600    2585.00   285.00	 3   *  /
-   1     4  1  1   2000000.0   30000   *   700    2585.00   285.00	 *   3  /
+--AQnr.  I  J  K     Area      Length PHI      K     Depth  Initial.Pr	PVTNUM   SATNUM  BIOTCOEF SMODULUS LAME FACE
+   1     1  1  1   1000000.0   10000   0.25   400    2585.00   285.00	 2       2       0.1       1.0     4.0  'I+' /
+   1     3  1  1   1500000.0   20000   0.24   600    2585.00   285.00	 3       *       0.2       2.0     5.0  'K+' /
+   1     4  1  1   2000000.0   30000   *      700    2585.00   285.00	 *       3       0.3       3.0     6.0  /
 /
 AQUCON
 --  Connect numerical aquifer to the reservoir
@@ -762,6 +769,11 @@ BOOST_AUTO_TEST_CASE(NumericalAquiferTest)
         BOOST_CHECK_EQUAL(c1->sattable, 2);
         BOOST_CHECK_EQUAL(c1->global_index, 0);
 
+        BOOST_CHECK_CLOSE(c1->biotcoef, 0.1, 1e-10);
+        BOOST_CHECK_CLOSE(c1->smodulus, 1.0 * Metric::Ymodule, 1e-10);
+        BOOST_CHECK_CLOSE(c1->lame, 4.0 * Metric::Ymodule, 1e-10);
+        BOOST_CHECK_EQUAL(c1->face_dir, FaceDir::XPlus);
+
         BOOST_CHECK_EQUAL(c2->record_id, std::size_t{1});
         BOOST_CHECK_EQUAL(c2->I, std::size_t{2});
         BOOST_CHECK_EQUAL(c2->J, std::size_t{0});
@@ -778,6 +790,11 @@ BOOST_AUTO_TEST_CASE(NumericalAquiferTest)
         BOOST_CHECK_EQUAL(c2->sattable, 1);
         BOOST_CHECK_EQUAL(c2->global_index, 2);
 
+        BOOST_CHECK_CLOSE(c2->biotcoef, 0.2, 1e-10);
+        BOOST_CHECK_CLOSE(c2->smodulus, 2.0 * Metric::Ymodule, 1e-10);
+        BOOST_CHECK_CLOSE(c2->lame, 5.0 * Metric::Ymodule, 1e-10);
+        BOOST_CHECK_EQUAL(c2->face_dir, FaceDir::ZPlus);
+
         BOOST_CHECK_EQUAL(c3->record_id, std::size_t{2});
         BOOST_CHECK_EQUAL(c3->I, std::size_t{3});
         BOOST_CHECK_EQUAL(c3->J, std::size_t{0});
@@ -793,6 +810,11 @@ BOOST_AUTO_TEST_CASE(NumericalAquiferTest)
         BOOST_CHECK_EQUAL(c3->pvttable, 1);
         BOOST_CHECK_EQUAL(c3->sattable, 3);
         BOOST_CHECK_EQUAL(c3->global_index, 3);
+
+        BOOST_CHECK_CLOSE(c3->biotcoef, 0.3, 1e-10);
+        BOOST_CHECK_CLOSE(c3->smodulus, 3.0 * Metric::Ymodule, 1e-10);
+        BOOST_CHECK_CLOSE(c3->lame, 6.0 * Metric::Ymodule, 1e-10);
+        BOOST_CHECK_EQUAL(c3->face_dir, FaceDir::Unknown); // = default
     }
 
     {
@@ -857,7 +879,6 @@ BOOST_AUTO_TEST_CASE(NumericalAquiferTest)
     BOOST_CHECK_EQUAL(satnum[2], 1);
     BOOST_CHECK_EQUAL(satnum[3], 3);
 
-
     const auto& permx = ecl_state.fieldProps().get_double("PERMX");
     BOOST_CHECK_SMALL(permx[0], 1.e-20);
     BOOST_CHECK_SMALL(permx[2], 1.e-20);
@@ -874,6 +895,62 @@ BOOST_AUTO_TEST_CASE(NumericalAquiferTest)
     BOOST_CHECK_CLOSE(poro[0], 0.25, 1.e-10);
     BOOST_CHECK_CLOSE(poro[2], 0.24, 1.e-10);
     BOOST_CHECK_CLOSE(poro[3], 0.25, 1.e-10);
+
+    const auto& biotcoef = ecl_state.fieldProps().get_double("BIOTCOEF");
+    BOOST_CHECK_CLOSE(biotcoef[0], 0.1, 1e-10);
+    BOOST_CHECK_CLOSE(biotcoef[2], 0.2, 1e-10);
+    BOOST_CHECK_CLOSE(biotcoef[3], 0.3, 1e-10);
+    const auto& smod = ecl_state.fieldProps().get_double("SMODULUS");
+    BOOST_CHECK_CLOSE(smod[0], 1.0 * Metric::Ymodule, 1.e-10);
+    BOOST_CHECK_CLOSE(smod[2], 2.0 * Metric::Ymodule, 1.e-10);
+    BOOST_CHECK_CLOSE(smod[3], 3.0 * Metric::Ymodule, 1.e-10);
+    const auto& lame = ecl_state.fieldProps().get_double("LAME");
+    BOOST_CHECK_CLOSE(lame[0], 4.0 * Metric::Ymodule, 1e-10);
+    BOOST_CHECK_CLOSE(lame[2], 5.0 * Metric::Ymodule, 1e-10);
+    BOOST_CHECK_CLOSE(lame[3], 6.0 * Metric::Ymodule, 1e-10);
+
+    // TPSA face properties: aquifer -> grid connection
+    const double w_aq = num_aqu.getAquifer(1).getCellPrt(0)->tpsaWeight();
+    const double l_aq = num_aqu.getAquifer(1).getCellPrt(0)->length;
+    const double a_aq = num_aqu.getAquifer(1).getCellPrt(0)->area;
+    for (std::size_t ix = 0; ix < 8; ++ix) {
+        const auto global_ind = grid.getGlobalIndex(ix, 14, 2);
+        const auto& dims = grid.getCellDims(global_ind);
+        const double smod_grid = smod[global_ind];
+        const double w_grid = dims[1] / 2 / smod_grid;
+        BOOST_CHECK_CLOSE(nncs[ix].weightAvg, w_aq / (w_aq + w_grid), 1e-10);
+        BOOST_CHECK_CLOSE(nncs[ix].weightProd, w_aq * w_grid, 1e-10);
+        BOOST_CHECK_CLOSE(nncs[ix].faceArea, dims[0] * dims[2], 1e-10);
+        BOOST_CHECK_CLOSE(nncs[ix].bndryArea, a_aq, 1e-10);
+        BOOST_CHECK_CLOSE(nncs[ix].normDist, 0.5 * (dims[1] + l_aq), 1e-10);
+        BOOST_CHECK_CLOSE(nncs[ix].cellLength, l_aq, 1e-10);
+        BOOST_CHECK_EQUAL(nncs[ix].faceId, 2); // aq. cell index < grid cell index -> aq. cell face
+    }
+
+    // TPSA face properties: aquifer -> aquifer
+    const auto& aq_nncs = aquifer.aquiferCellNNCs();
+    BOOST_CHECK_EQUAL(aq_nncs.size(), 2);
+    const double w1 = 10000.0 / 2.0 / (1.0 * Metric::Ymodule);
+    const double w2 = 20000.0 / 2.0 / (2.0 * Metric::Ymodule);
+    const double w3 = 30000.0 / 2.0 / (3.0 * Metric::Ymodule);
+
+    // Aquifer cells (1, 1, 1) -> (3, 1, 1)
+    BOOST_CHECK_CLOSE(aq_nncs[0].weightAvg, w1 / (w1 + w2), 1e-10);
+    BOOST_CHECK_CLOSE(aq_nncs[0].weightProd, w1 * w2, 1e-10);
+    BOOST_CHECK_CLOSE(aq_nncs[0].faceArea, 1000000.0, 1e-10); // = aq. cell 1 area
+    BOOST_CHECK_CLOSE(aq_nncs[0].bndryArea, 1500000.0, 1e-10); // = aq. cell 2 area
+    BOOST_CHECK_CLOSE(aq_nncs[0].normDist, 15000.0, 1e-10);
+    BOOST_CHECK_CLOSE(aq_nncs[0].cellLength, 20000.0, 1e-10); // = aq. cell 2 length
+    BOOST_CHECK_EQUAL(aq_nncs[0].faceId, 1); // = aq. cell no 1 face id
+
+    // Aquifer cells (3, 1, 1) -> (4, 1, 1)
+    BOOST_CHECK_CLOSE(aq_nncs[1].weightAvg, w2 / (w2 + w3), 1e-10);
+    BOOST_CHECK_CLOSE(aq_nncs[1].weightProd, w2 * w3, 1e-10);
+    BOOST_CHECK_CLOSE(aq_nncs[1].faceArea, 1500000.0, 1e-10); // = aq. cell 2 area
+    BOOST_CHECK_CLOSE(aq_nncs[1].bndryArea, 2000000.0, 1e-10); // = aq. cell 3 area
+    BOOST_CHECK_CLOSE(aq_nncs[1].normDist, 25000.0, 1e-10);
+    BOOST_CHECK_CLOSE(aq_nncs[1].cellLength, 30000.0, 1e-10); // = aq. cell 3 length
+    BOOST_CHECK_EQUAL(aq_nncs[1].faceId, 5); // = aq. cell no 2 face id
 }
 
 namespace {
