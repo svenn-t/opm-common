@@ -111,12 +111,12 @@ namespace Opm {
             const double trans1 = this->cells_[i].transmissiblity();
             const double trans2 = this->cells_[i + 1].transmissiblity();
             const double tran = 1. / (1. / trans1 + 1. / trans2);
-            const size_t gc1 = this->cells_[i + 1].global_index;
-            const size_t gc2 = this->cells_[i].global_index;
+            const size_t gc1 = this->cells_[i].global_index;
+            const size_t gc2 = this->cells_[i + 1].global_index;
             if (this->cells_[i].tpsaWeight() > 0.0 && this->cells_[i + 1].tpsaWeight() > 0.0) {
-                const double w1 = this->cells_[i + 1].tpsaWeight();
-                const double w2 = this->cells_[i].tpsaWeight();
-                const double w_avg = w1 / (w1 + w2);
+                const double w1 = this->cells_[i].tpsaWeight();
+                const double w2 = this->cells_[i + 1].tpsaWeight();
+                const double w_avg = w2 / (w1 + w2);
                 const double w_prod = w1 * w2;
                 const double area = this->cells_[i].area;
                 const double cell_area = this->cells_[i + 1].area;
@@ -135,7 +135,7 @@ namespace Opm {
                                       cell_area,
                                       norm_dist,
                                       cell_length,
-                                      cell_face_id);
+                                      face_id);
                 } else {
                     nncs.emplace_back(gc2,
                                       gc1,
@@ -146,7 +146,7 @@ namespace Opm {
                                       cell_area,
                                       norm_dist,
                                       cell_length,
-                                      face_id);
+                                      cell_face_id);
                 }
             } else {
                 if (gc1 < gc2) {
