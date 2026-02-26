@@ -1108,6 +1108,7 @@ list( APPEND PUBLIC_HEADER_FILES
       opm/material/fluidmatrixinteractions/BrooksCoreyParams.hpp
       opm/material/fluidmatrixinteractions/BrooksCorey.hpp
       opm/material/fluidmatrixinteractions/PiecewiseLinearTwoPhaseMaterial.hpp
+      opm/material/materialstates/GenericMaterialState.hpp
       opm/material/materialstates/MaterialStateTPSA.hpp
       opm/material/checkFluidSystem.hpp
       opm/material/viscositymodels/LBC.hpp

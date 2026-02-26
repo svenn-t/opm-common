@@ -22,12 +22,11 @@
   module for the precise wording of the license and the list of
   copyright holders.
 */
-#ifndef TPSA_MATERIAL_STATE_HPP
-#define TPSA_MATERIAL_STATE_HPP
+#ifndef GENERIC_MATERIAL_STATE_HPP
+#define GENERIC_MATERIAL_STATE_HPP
 
 #include <opm/material/common/MathToolbox.hpp>
 #include <opm/material/common/Valgrind.hpp>
-#include <opm/material/materialstates/GenericMaterialState.hpp>
 
 #include <array>
 
@@ -35,62 +34,44 @@
 namespace Opm {
 
 template <class Scalar>
-class MaterialStateTPSA : public GenericMaterialState<Scalar>
+class GenericMaterialState
 {
-    using ParentType = GenericMaterialState<Scalar>;
-
 public:
     /*!
     * \brief Constructor
     */
-    MaterialStateTPSA() : ParentType()
+    GenericMaterialState()
     {
-        Valgrind::SetUndefined(rotation_);
-        Valgrind::SetUndefined(solidPressure_);
+        Valgrind::SetUndefined(displacement_);
     }
 
     /*!
-    * \brief Return direction (x-, y- or z-) component of rotation
+     * \brief Destructor
+     */
+    virtual ~GenericMaterialState() = default;
+
+    /*!
+    * \brief Return direction (x-, y- or z-) component of displacement
     *
     * \param dirIdx Direction component index
     */
-    const Scalar rotation(unsigned dirIdx) const
+    const Scalar displacement(unsigned dirIdx) const
     {
-        return rotation_[dirIdx];
+        return displacement_[dirIdx];
     }
 
     /*!
-    * \brief Return solid pressure
-    */
-    const Scalar solidPressure() const
-    {
-        return solidPressure_;
-    }
-    /*!
-    * \brief Set a direction (x-, y- or z-) component of rotation
+    * \brief Set a direction (x-, y- or z-) component of displacement
     *
     * \param dirIdx Direction component index
-    * \param value Rotation value
+    * \param value Displacement value
     */
-    void setRotation(unsigned dirIdx, const Scalar value)
+    void setDisplacement(unsigned dirIdx, const Scalar value)
     {
         Valgrind::CheckDefined(value);
-        Valgrind::SetUndefined(rotation_[dirIdx]);
+        Valgrind::SetUndefined(displacement_[dirIdx]);
 
-        rotation_[dirIdx] = value;
-    }
-
-    /*!
-    * \brief Set solid pressure
-    *
-    * \param value Solid pressure value
-    */
-    void setSolidPressure(const Scalar value)
-    {
-        Valgrind::CheckDefined(value);
-        Valgrind::SetUndefined(solidPressure_);
-
-        solidPressure_ = value;
+        displacement_[dirIdx] = value;
     }
 
     /*!
@@ -101,16 +82,10 @@ public:
     template <class MaterialState>
     void assign(const MaterialState& ms)
     {
-        // Assign parent class variables
-        ParentType::assign(ms);
-
-        // Assign rotation
+        // Assign displacement and rotation
         for (unsigned dirIdx = 0; dirIdx < 3; ++dirIdx) {
-            rotation_[dirIdx] = Opm::decay<Scalar>(ms.rotation(dirIdx));
+            displacement_[dirIdx] = Opm::decay<Scalar>(ms.displacement(dirIdx));
         }
-
-        // Assign solid pressure
-        solidPressure_ = Opm::decay<Scalar>(ms.solidPressure());
     }
 
     /*!
@@ -118,15 +93,13 @@ public:
     */
     void checkDefined() const
     {
-        Valgrind::CheckDefined(rotation_);
-        Valgrind::CheckDefined(solidPressure_);
+        Valgrind::CheckDefined(displacement_);
     }
 
 protected:
-    std::array<Scalar, 3> rotation_{};
-    Scalar solidPressure_{};
-}; // class MaterialStateTPSA
+    std::array<Scalar, 3> displacement_{};
+};  // class GenericMaterialState
 
-} // namespace Opm
+}  // namespace Opm
 
 #endif
