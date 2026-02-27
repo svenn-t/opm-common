@@ -584,69 +584,79 @@ bool Nupcol::operator==(const Nupcol& data) const {
 }
 
 
-Tpsa::Tpsa(const Deck& deck)
+MechSolver::MechSolver(const Deck& deck)
 {
-    using TPSA = ParserKeywords::TPSA;
-    if (deck.hasKeyword<TPSA>()) {
+    using MECHSOLV = ParserKeywords::MECHSOLV;
+    if (deck.hasKeyword<MECHSOLV>()) {
         // Get record
-        const auto& keyword = deck.get<TPSA>().back();
+        const auto& keyword = deck.get<MECHSOLV>().back();
         const auto& record = keyword[0];
 
+        // Set solver
+        const auto& solver = record.getItem<MECHSOLV::SOLVER>().get<std::string>(0);
+        if (solver == "TPSA") {
+            this->m_solver = MechSolver::Solver::TPSA;
+        } else {
+            const std::string msg = fmt::format("MECHSOLV item 1 = {} not valid!", solver);
+            OpmLog::error(msg);
+            throw std::runtime_error(msg);
+        }
+
         // Set coupling scheme
-        const auto& scheme = record.getItem<TPSA::COUPLING>().get<std::string>(0);
+        const auto& scheme = record.getItem<MECHSOLV::COUPLING>().get<std::string>(0);
         if (scheme == "LAGGED") {
-            this->m_coupling = Tpsa::CouplingScheme::Lagged;
+            this->m_coupling = MechSolver::CouplingScheme::Lagged;
         }
         else if (scheme == "FIXED-STRESS") {
-            this->m_coupling = Tpsa::CouplingScheme::FixedStress;
+            this->m_coupling = MechSolver::CouplingScheme::FixedStress;
         }
         else {
-            const std::string msg = fmt::format("TPSA item 1 = {} not valid!", scheme);
+            const std::string msg = fmt::format("MECHSOLV item 2 = {} not valid!", scheme);
             OpmLog::error(msg);
             throw std::runtime_error(msg);
         }
 
         // Set fixed stress iteration range
-        this->m_fixed_stress_min_iter = record.getItem<TPSA::FIXED_STRESS_MIN_ITER>().get<int>(0);
-        this->m_fixed_stress_max_iter = record.getItem<TPSA::FIXED_STRESS_MAX_ITER>().get<int>(0);
+        this->m_fixed_stress_min_iter =
+            record.getItem<MECHSOLV::FIXED_STRESS_MIN_ITER>().get<int>(0);
+        this->m_fixed_stress_max_iter =
+            record.getItem<MECHSOLV::FIXED_STRESS_MAX_ITER>().get<int>(0);
 
         if (this->fixedStressScheme() &&
             (this->m_fixed_stress_min_iter > this->m_fixed_stress_max_iter)) {
             this->m_fixed_stress_max_iter = this->m_fixed_stress_min_iter;
-            OpmLog::warning(fmt::format("TPSA item 2 (={}) is larger than item 3 (={}).\n"
-                                        "Maximum fixed-stress iterations set equal to minimum!",
-                                        this->m_fixed_stress_min_iter,
-                                        this->m_fixed_stress_max_iter));
+            OpmLog::warning(fmt::format(
+                "MECHSOLV item 2 (={}) is larger than item 3 (={}).\n"
+                "Maximum fixed-stress iterations set equal to minimum!",
+                this->m_fixed_stress_min_iter,
+                this->m_fixed_stress_max_iter));
         }
-
-        // Turn on TPSA
-        this->m_active = true;
     }
 }
 
-bool Tpsa::operator==(const Tpsa& other) const
+bool MechSolver::operator==(const MechSolver& other) const
 {
     return
+        this->m_solver == other.m_solver &&
         this->m_coupling == other.m_coupling &&
         this->m_fixed_stress_min_iter == other.m_fixed_stress_min_iter &&
-        this->m_fixed_stress_max_iter == other.m_fixed_stress_max_iter &&
-        this->m_active == other.m_active;
+        this->m_fixed_stress_max_iter == other.m_fixed_stress_max_iter;
 }
 
-Tpsa Tpsa::serializationTestObject()
+MechSolver MechSolver::serializationTestObject()
 {
-    Tpsa tpsa;
-    tpsa.m_coupling = CouplingScheme::Lagged;
-    tpsa.m_fixed_stress_min_iter = 2;
-    tpsa.m_fixed_stress_max_iter = 8;
-    tpsa.m_active = true;
+    MechSolver mech_solver;
+    mech_solver.m_solver = Solver::TPSA;
+    mech_solver.m_coupling = CouplingScheme::Lagged;
+    mech_solver.m_fixed_stress_min_iter = 2;
+    mech_solver.m_fixed_stress_max_iter = 8;
 
-    return tpsa;
+    return mech_solver;
 }
 
-const Tpsa& Runspec::tpsa() const
+const MechSolver& Runspec::mechSolver() const
 {
-    return this->m_tpsa;
+    return this->m_mechsolver;
 }
 
 bool Tracers::operator==(const Tracers& other) const {
@@ -728,7 +738,7 @@ Runspec::Runspec(const Deck& deck)
     , m_actdims    (deck)
     , m_sfuncctrl  (deck)
     , m_nupcol     ()
-    , m_tpsa       (deck)
+    , m_mechsolver (deck)
     , m_tracers    (deck)
     , m_co2storage (false)
     , m_co2sol     (false)

@@ -1,5 +1,5 @@
 {
-  "name": "TPSA",
+  "name": "MECHSOLV",
   "sections": [
     "RUNSPEC"
   ],
@@ -10,18 +10,23 @@
   "items": [
     {
       "item": 1,
+      "name": "SOLVER",
+      "value_type": "STRING"
+    },
+    {
+      "item": 2,
       "name": "COUPLING",
       "value_type": "STRING",
       "default": "LAGGED"
     },
     {
-      "item": 2,
+      "item": 3,
       "name": "FIXED_STRESS_MIN_ITER",
       "value_type": "INT",
       "default": 1
     },
     {
-      "item": 3,
+      "item": 4,
       "name": "FIXED_STRESS_MAX_ITER",
       "value_type": "INT",
       "default": 5
