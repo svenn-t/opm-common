@@ -1,0 +1,11 @@
+{
+  "name": "BIOTTEMP",
+  "sections": [
+    "GRID"
+  ],
+  "description": "The BIOTTEMP item sets the Biot coefficient for temperature for a cell in mechanics models.",
+  "data": {
+    "value_type": "DOUBLE",
+    "dimension": "1"
+  }
+}
