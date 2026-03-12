@@ -230,6 +230,7 @@ data::Wells result_wells(const bool w3_injector = true)
     rates3.set( rt::polymer, 30.16 / day );
     rates3.set( rt::brine, 30.17 / day );
     rates3.set( rt::tracer, 30.18 / day, "SEA" );
+    rates3.set( rt::wat_frac, 0.1729 / day );
 
     data::Rates rates6;
     rates6.set( rt::wat, 60.0 / day );
@@ -286,6 +287,7 @@ data::Wells result_wells(const bool w3_injector = true)
     crates3.set( rt::reservoir_gas, 300.8 / day );
     crates3.set( rt::polymer, 300.16 / day );
     crates3.set( rt::brine, 300.17 / day );
+    crates3.set( rt::wat_frac, 0.618 / day );
 
     data::Rates crates6;
     crates6.set( rt::wat, 600.0 / day );
@@ -330,12 +332,28 @@ data::Wells result_wells(const bool w3_injector = true)
         /* fracture_rate = */ 0.025*sm3_pr_day()
     };
 
+    const auto con_fracture = data::ConnectionFracture {
+        .area             =  12.34*sm3(),
+        .flux             =   4.56*sm3_pr_day(),
+        .height           =   5.67*prefix::centi*unit::meter,
+        .length           =   6.78*unit::meter,
+        .WI               =  78.91011*cp_rm3_per_db(),
+        .volume           =  89.1*sm3(),
+        .filter_volume    =   9.101112*sm3(),
+        .avg_width        =  30.48*prefix::centi*unit::meter,
+        .avg_filter_width =   3.4*prefix::centi*unit::meter,
+        .inj_pressure     =  34.56*unit::barsa,
+        .inj_bhp          =  45.67*unit::barsa,
+        .inj_wellrate     = 512.1024*sm3_pr_day()
+    };
+
     const auto& w3_con_filtrate = w3_injector ? con_filtrate : zero_filtrate;
+    const auto& w3_con_fracture = w3_injector ? con_fracture : data::ConnectionFracture{};
 
     data::Connection well1_comp1 { 0  , crates1, 1.9 *unit::barsa, -123.4 *rm3_pr_day(), 314.15, 0.35 , 0.25,   2.718e2, 111.222*cp_rm3_per_db(), 0.0, 1.0, 0, zero_filtrate};
     data::Connection well2_comp1 { 1  , crates2, 1.10*unit::barsa, - 23.4 *rm3_pr_day(), 212.1 , 0.78 , 0.0 ,  12.34   , 222.333*cp_rm3_per_db(), 0.0, 1.0, 0, zero_filtrate};
     data::Connection well2_comp2 { 101, crates3, 1.11*unit::barsa, -234.5 *rm3_pr_day(), 150.6 , 0.001, 0.89, 100.0    , 333.444*cp_rm3_per_db(), 0.0, 1.0, 0, con_filtrate /* output should be zero since it is a producer */};
-    data::Connection well3_comp1 { 2  , crates3, 1.11*unit::barsa,  432.1 *rm3_pr_day(), 456.78, 0.0  , 0.15, 432.1    , 444.555*cp_rm3_per_db(), 0.0, 1.0, 0, w3_con_filtrate};
+    data::Connection well3_comp1 { 2  , crates3, 1.11*unit::barsa,  432.1 *rm3_pr_day(), 456.78, 0.0  , 0.15, 432.1    , 444.555*cp_rm3_per_db(), 0.0, 1.0, 0, w3_con_filtrate, w3_con_fracture};
     data::Connection well6_comp1 { 77 , crates6, 6.11*unit::barsa,  321.09*rm3_pr_day(), 656.78, 0.0  , 0.65, 632.1    , 555.666*cp_rm3_per_db(), 0.0, 1.0, 0, zero_filtrate};
 
     /*
@@ -1264,6 +1282,65 @@ BOOST_AUTO_TEST_CASE(well_keywords_dynamic_close)
     BOOST_CHECK_CLOSE( 0.3, ecl_sum_get_well_var( resp, 1, "W_3", "WINJFC"), 1.e-5 );
     BOOST_CHECK_CLOSE( 0.3, ecl_sum_get_well_var( resp, 2, "W_3", "WINJFC"), 1.e-5 );
 
+    /* fracture filtrate injection rates [CW]FCFFVIR, [CW]FCWFVIR, [CW]FCFVIR */
+    // W_1 is a producer => all zero
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_var( resp, 1, "W_1", "WFCFFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_var( resp, 1, "W_1", "WFCWFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_var( resp, 1, "W_1", "WFCFVIR"),  1.e-5 );
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 1, "W_1", "WWIRFRAC"), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 2, "W_1", "WWIRFRAC"), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 1, "W_1", "WWITFRAC"), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 2, "W_1", "WWITFRAC"), 1.0e-5);
+
+    // W_2 is a producer => all zero
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_var( resp, 1, "W_2", "WFCFFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_var( resp, 1, "W_2", "WFCWFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_var( resp, 1, "W_2", "WFCFVIR"),  1.e-5 );
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 1, "W_2", "WWIRFRAC"), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 2, "W_2", "WWIRFRAC"), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 1, "W_2", "WWITFRAC"), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_var(resp, 2, "W_2", "WWITFRAC"), 1.0e-5);
+
+    // W_3 is an injector with fracture_rate=0.025 m3/day and well rate=0.1 m3/day
+    BOOST_CHECK_CLOSE( 0.025, ecl_sum_get_well_var( resp, 1, "W_3", "WFCFFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.025, ecl_sum_get_well_var( resp, 2, "W_3", "WFCFFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.1,   ecl_sum_get_well_var( resp, 1, "W_3", "WFCWFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.1,   ecl_sum_get_well_var( resp, 2, "W_3", "WFCWFVIR"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.125, ecl_sum_get_well_var( resp, 1, "W_3", "WFCFVIR"),  1.e-5 );
+    BOOST_CHECK_CLOSE( 0.125, ecl_sum_get_well_var( resp, 2, "W_3", "WFCFVIR"),  1.e-5 );
+
+    BOOST_CHECK_CLOSE(0.1729, ecl_sum_get_well_var(resp, 1, "W_3", "WWIRFRAC"), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.1729, ecl_sum_get_well_var(resp, 2, "W_3", "WWIRFRAC"), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.1729, ecl_sum_get_well_var(resp, 1, "W_3", "WWITFRAC"), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.3458, ecl_sum_get_well_var(resp, 2, "W_3", "WWITFRAC"), 1.0e-5);
+
+    // WFCFVIR == WFCFFVIR + WFCWFVIR
+    BOOST_CHECK_CLOSE( ecl_sum_get_well_var( resp, 1, "W_3", "WFCFFVIR")
+                     + ecl_sum_get_well_var( resp, 1, "W_3", "WFCWFVIR"),
+                       ecl_sum_get_well_var( resp, 1, "W_3", "WFCFVIR"), 1.e-5 );
+
+    /* fracture filtrate cumulative volumes [CW]FCFFVIT, [CW]FCWFVIT, [CW]FCFVIT */
+    // W_3 cumulative volumes: rate * dt (1 day per step)
+    BOOST_CHECK_CLOSE( 0.025, ecl_sum_get_well_var( resp, 1, "W_3", "WFCFFVIT"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.05,  ecl_sum_get_well_var( resp, 2, "W_3", "WFCFFVIT"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.1,   ecl_sum_get_well_var( resp, 1, "W_3", "WFCWFVIT"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.2,   ecl_sum_get_well_var( resp, 2, "W_3", "WFCWFVIT"), 1.e-5 );
+    BOOST_CHECK_CLOSE( 0.125, ecl_sum_get_well_var( resp, 1, "W_3", "WFCFVIT"),  1.e-5 );
+    BOOST_CHECK_CLOSE( 0.25,  ecl_sum_get_well_var( resp, 2, "W_3", "WFCFVIT"),  1.e-5 );
+
+    // WFCFVIT == WFCFFVIT + WFCWFVIT
+    BOOST_CHECK_CLOSE( ecl_sum_get_well_var( resp, 1, "W_3", "WFCFFVIT")
+                     + ecl_sum_get_well_var( resp, 1, "W_3", "WFCWFVIT"),
+                       ecl_sum_get_well_var( resp, 1, "W_3", "WFCFVIT"), 1.e-5 );
+    BOOST_CHECK_CLOSE( ecl_sum_get_well_var( resp, 2, "W_3", "WFCFFVIT")
+                     + ecl_sum_get_well_var( resp, 2, "W_3", "WFCWFVIT"),
+                       ecl_sum_get_well_var( resp, 2, "W_3", "WFCFVIT"), 1.e-5 );
+
     // Dump summary object as RSM file, load the new RSM file and compare.
     {
         std::string rsm_file = "TEST.RSM";
@@ -1800,6 +1877,130 @@ BOOST_AUTO_TEST_CASE(connection_kewords)
     BOOST_CHECK_CLOSE( 10., ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCAOF", 3, 1, 1 ), 1e-5 );
     BOOST_CHECK_CLOSE( 10., ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCAOF", 3, 1, 1 ), 1e-5 );
 
+    /* fracture filtrate connection rates [CW]FCFFVIR, [CW]FCWFVIR, [CW]FCFVIR */
+    // W_1 is a producer => all zero
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_connection_var( resp, 1, "W_1", "CFCFFVIR", 1, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_connection_var( resp, 1, "W_1", "CFCWFVIR", 1, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_connection_var( resp, 1, "W_1", "CFCFVIR",  1, 1, 1 ), 1e-5 );
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CWIRFRAC", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CWIRFRAC", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CWITFRAC", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CWITFRAC", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRAREA", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRAREA", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRFLUX", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRFLUX", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRHEIGH", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRHEIGH", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRLENGT", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRLENGT", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRWI", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRWI", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRVOLUM", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRVOLUM", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRFVOLU", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRFVOLU", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRAVGW", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRAVGW", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRAVGFW", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRAVGFW", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRINJPR", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRINJPR", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRINJBH", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRINJBH", 1, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 1, "W_1", "CFRINJRA", 1, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0, ecl_sum_get_well_connection_var(resp, 2, "W_1", "CFRINJRA", 1, 1, 1), 1.0e-5);
+
+    // W_2 is a producer => all zero (well2_comp2 has con_filtrate but W_2 is producer)
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_connection_var( resp, 1, "W_2", "CFCFFVIR", 2, 1, 2 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_connection_var( resp, 1, "W_2", "CFCWFVIR", 2, 1, 2 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0., ecl_sum_get_well_connection_var( resp, 1, "W_2", "CFCFVIR",  2, 1, 2 ), 1e-5 );
+
+    // W_3 connection 1: fracture_rate=0.025 m3/day, well rate=0.1 m3/day
+    BOOST_CHECK_CLOSE( 0.025, ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFFVIR", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.025, ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCFFVIR", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.1,   ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCWFVIR", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.1,   ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCWFVIR", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.125, ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFVIR",  3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.125, ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCFVIR",  3, 1, 1 ), 1e-5 );
+
+    // CFCFVIR == CFCFFVIR + CFCWFVIR
+    BOOST_CHECK_CLOSE( ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFFVIR", 3, 1, 1 )
+                     + ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCWFVIR", 3, 1, 1 ),
+                       ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFVIR",  3, 1, 1 ), 1e-5 );
+
+    /* fracture filtrate connection cumulative volumes [CW]FCFFVIT, [CW]FCWFVIT, [CW]FCFVIT */
+    // W_3 cumulative volumes: rate * dt (1 day per step)
+    BOOST_CHECK_CLOSE( 0.025, ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFFVIT", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.05,  ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCFFVIT", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.1,   ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCWFVIT", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.2,   ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCWFVIT", 3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.125, ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFVIT",  3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( 0.25,  ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCFVIT",  3, 1, 1 ), 1e-5 );
+
+    // CFCFVIT == CFCFFVIT + CFCWFVIT
+    BOOST_CHECK_CLOSE( ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFFVIT", 3, 1, 1 )
+                     + ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCWFVIT", 3, 1, 1 ),
+                       ecl_sum_get_well_connection_var( resp, 1, "W_3", "CFCFVIT",  3, 1, 1 ), 1e-5 );
+    BOOST_CHECK_CLOSE( ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCFFVIT", 3, 1, 1 )
+                     + ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCWFVIT", 3, 1, 1 ),
+                       ecl_sum_get_well_connection_var( resp, 2, "W_3", "CFCFVIT",  3, 1, 1 ), 1e-5 );
+
+    BOOST_CHECK_CLOSE(0.618, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CWIRFRAC", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.618, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CWIRFRAC", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.618, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CWITFRAC", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(1.236, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CWITFRAC", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(12.34, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRAREA", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(12.34, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRAREA", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(4.56, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRFLUX", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(4.56, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRFLUX", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.0567, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRHEIGH", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.0567, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRHEIGH", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(6.78, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRLENGT", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(6.78, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRLENGT", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(78.91011, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRWI", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(78.91011, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRWI", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(89.1, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRVOLUM", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(89.1, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRVOLUM", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(9.101112, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRFVOLU", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(9.101112, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRFVOLU", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.3048, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRAVGW", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.3048, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRAVGW", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(0.034, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRAVGFW", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(0.034, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRAVGFW", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(34.56, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRINJPR", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(34.56, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRINJPR", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(45.67, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRINJBH", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(45.67, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRINJBH", 3, 1, 1), 1.0e-5);
+
+    BOOST_CHECK_CLOSE(512.1024, ecl_sum_get_well_connection_var(resp, 1, "W_3", "CFRINJRA", 3, 1, 1), 1.0e-5);
+    BOOST_CHECK_CLOSE(512.1024, ecl_sum_get_well_connection_var(resp, 2, "W_3", "CFRINJRA", 3, 1, 1), 1.0e-5);
 }
 
 BOOST_AUTO_TEST_CASE(DATE)
