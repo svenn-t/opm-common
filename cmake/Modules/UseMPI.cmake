@@ -23,6 +23,10 @@ function(mpi_checks)
     set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES};${MPI_C_INCLUDES})
     check_function_exists(MPI_Finalized MPI_2)
     cmake_pop_check_state()
-    target_compile_definitions(${PARAM_TARGET} PUBLIC MPI_2=${MPI_2})
+    target_compile_definitions(${PARAM_TARGET}
+      PUBLIC
+        HAVE_MPI=1
+        MPI_2=${MPI_2}
+    )
   endif()
 endfunction()
