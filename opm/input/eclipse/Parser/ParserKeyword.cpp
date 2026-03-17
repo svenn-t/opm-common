@@ -769,12 +769,18 @@ void set_dimensions( ParserItem& item,
         }
         else {
             size_t record_nr = 0;
-            for( auto& rawRecord : rawKeyword ) {
-                if( m_records.size() == 0 && rawRecord.size() > 0 )
-                    throw std::invalid_argument("Missing item information " + rawKeyword.getKeywordName());
+            try {
+                for( auto& rawRecord : rawKeyword ) {
+                    if( m_records.size() == 0 && rawRecord.size() > 0 )
+                        throw std::invalid_argument("Missing item information " + rawKeyword.getKeywordName());
 
-                keyword.addRecord( this->getRecord( record_nr ).parse( parseContext, errors, rawRecord, active_unitsystem, default_unitsystem, rawKeyword.location() ) );
-                record_nr++;
+                    keyword.addRecord( this->getRecord( record_nr ).parse( parseContext, errors, rawRecord, active_unitsystem, default_unitsystem, rawKeyword.location() ) );
+                    record_nr++;
+                }
+            } catch (const std::invalid_argument& e) {
+                std::string msg = "Failed to process entry " + std::to_string(record_nr+1) + " out of " + std::to_string(rawKeyword.size())
+                                  + " of the keyword " + keyword.name() + "\n" + e.what();
+                throw std::invalid_argument(msg);
             }
         }
 
