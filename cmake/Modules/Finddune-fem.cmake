@@ -21,7 +21,14 @@ endif()
 
 if(dune-fem_FOUND)
   find_package(GMP)
+  find_package(SuperLU)
   # make version number available in config.h
   include (UseDuneVer)
   find_dune_version ("dune" "fem")
+  target_compile_definitions(dunefem
+    INTERFACE
+      DUNE_FEM_VERSION_MAJOR=${DUNE_FEM_VERSION_MAJOR}
+      DUNE_FEM_VERSION_MINOR=${DUNE_FEM_VERSION_MINOR}
+      DUNE_FEM_VERSION_REVISION=${DUNE_FEM_VERSION_REVISION}
+  )
 endif()
