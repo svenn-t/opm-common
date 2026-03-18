@@ -181,7 +181,7 @@ namespace {
     std::array<double, 3>
     permThickness(const external::cvf::Vec3d& effective_connection,
                   const std::array<double,3>& cell_perm,
-                  const double ntg)
+                  const double                ntg)
     {
         auto perm_thickness = std::array {
             effective_connection[0],
@@ -195,7 +195,7 @@ namespace {
             Opm::Connection::Direction::Z,
         };
 
-        for (size_t i = 0; i < 3; ++i) {
+        for (auto i = 0*direction.size(); i < direction.size(); ++i) {
             const auto K = permComponents(direction[i], cell_perm);
             perm_thickness[i] *= std::sqrt(K[0] * K[1]);
         }
@@ -207,10 +207,10 @@ namespace {
     std::array<double, 3>
     connectionFactor(const std::array<double,3>& cell_perm,
                      const std::array<double,3>& cell_size,
-                     const double ntg,
+                     const double                ntg,
                      const std::array<double,3>& Kh,
-                     const double rw,
-                     const double skin_factor)
+                     const double                rw,
+                     const double                skin_factor)
     {
         auto connection_factor = std::array<double, 3>{};
 
@@ -220,9 +220,9 @@ namespace {
             Opm::Connection::Direction::Z,
         };
 
-        const double angle = 2 * std::numbers::pi;
+        constexpr auto angle = 2 * std::numbers::pi;
 
-        for (size_t i = 0; i < 3; ++i) {
+        for (auto i = 0*direction.size(); i < direction.size(); ++i) {
             const auto K = permComponents(direction[i], cell_perm);
             const auto D = effectiveExtent(direction[i], ntg, cell_size);
             const auto r0 = effectiveRadius(K, D);
@@ -411,7 +411,7 @@ namespace Opm {
 
         // Angle of completion exposed to flow.  We assume centre
         // placement so there's complete exposure (= 2\pi).
-        const auto angle = 2 * std::numbers::pi;
+        constexpr auto angle = 2 * std::numbers::pi;
 
         for (int k = K1; k <= K2; ++k) {
             const auto& cell = grid.get_cell(I, J, k, lgr_label);
@@ -626,8 +626,9 @@ The cell ({},{},{}) in well {} is not active and the connection will be ignored)
         std::vector<double> measured_depths;
 
         // Calulate the x,y,z coordinates of the begin and end of a perforation
+        const auto m_top = perf_top.getSIDouble(0);
+        const auto m_bot = perf_bot.getSIDouble(0);
         external::cvf::Vec3d p_top, p_bot;
-        double m_top = perf_top.getSIDouble(0), m_bot = perf_bot.getSIDouble(0);
         for (size_t i = 0; i < 3 ; ++i) {
             p_top[i] = linearInterpolation(this->md, this->coord[i], m_top);
             p_bot[i] = linearInterpolation(this->md, this->coord[i], m_bot);
@@ -807,9 +808,12 @@ CF and Kh items for well {} must both be specified or both defaulted/negative)",
     {
         double x = record.getItem("X").getSIDouble(0);
         double y = record.getItem("Y").getSIDouble(0);
-        const auto& mapaxes = grid.get_grid()->getMapAxes();
-        if (mapaxes.has_value())
-            mapaxes.value().inv_transform(x, y);
+
+        if (const auto& mapaxes = grid.get_grid()->getMapAxes();
+            mapaxes.has_value())
+        {
+            mapaxes->inv_transform(x, y);
+        }
 
         this->coord[0].push_back(x);
         this->coord[1].push_back(y);
