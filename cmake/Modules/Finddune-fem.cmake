@@ -27,6 +27,7 @@ if(dune-fem_FOUND)
   find_dune_version ("dune" "fem")
   target_compile_definitions(dunefem
     INTERFACE
+      HAVE_DUNE_FEM=1
       DUNE_FEM_VERSION_MAJOR=${DUNE_FEM_VERSION_MAJOR}
       DUNE_FEM_VERSION_MINOR=${DUNE_FEM_VERSION_MINOR}
       DUNE_FEM_VERSION_REVISION=${DUNE_FEM_VERSION_REVISION}
