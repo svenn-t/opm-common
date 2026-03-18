@@ -285,6 +285,10 @@ public:
         }
         // Killough hysteresis for the wetting phase
         assert(params.config().krHysteresisModel() == 4);
+
+        if ( (1.0-Sw-params.Sncrt()) < 0.0) {
+            return EffectiveLaw::template twoPhaseSatKrw<Evaluation, Args...>(params.imbibitionParams(), Sw);
+        }
         Evaluation Snorm = params.Sncri()+(1.0-Sw-params.Sncrt())*(params.Snmaxd()-params.Sncri())/(params.Snhy()-params.Sncrt());
         Evaluation Krwi_snorm = EffectiveLaw::template twoPhaseSatKrw<Evaluation, Args...>(params.imbibitionParams(), 1 - Snorm);
         Evaluation Krwd = params.config().enableWettingPhaseKilloughFix()? EffectiveLaw::template twoPhaseSatKrw<Evaluation, Args...>(params.drainageParams(), Sw) : params.KrwdHy();
