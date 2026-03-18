@@ -39,6 +39,9 @@
 
 #include <opm/input/eclipse/Deck/DeckRecord.hpp>
 
+#include <opm/input/eclipse/Parser/ErrorGuard.hpp>
+#include <opm/input/eclipse/Parser/ParseContext.hpp>
+
 #include <opm/input/eclipse/Parser/ParserKeywords/C.hpp>
 #include <opm/input/eclipse/Parser/ParserKeywords/W.hpp>
 
@@ -195,10 +198,14 @@ namespace {
             Opm::Connection::Direction::Z,
         };
 
-        for (auto i = 0*direction.size(); i < direction.size(); ++i) {
-            const auto K = permComponents(direction[i], cell_perm);
-            perm_thickness[i] *= std::sqrt(K[0] * K[1]);
-        }
+        std::ranges::transform(direction, perm_thickness, perm_thickness.begin(),
+                               [&cell_perm](const Opm::Connection::Direction d,
+                                            const double                     h)
+                               {
+                                   const auto K = permComponents(d, cell_perm);
+
+                                   return std::sqrt(K[0] * K[1]) * h;
+                               });
 
         return perm_thickness;
     }
@@ -220,16 +227,19 @@ namespace {
             Opm::Connection::Direction::Z,
         };
 
-        constexpr auto angle = 2 * std::numbers::pi;
+        std::ranges::transform(direction, Kh, connection_factor.begin(),
+                               [&cell_perm, &cell_size, ntg, rw, skin_factor]
+                               (const Opm::Connection::Direction d,
+                                const double                     kh)
+                               {
+                                   constexpr auto angle = 2 * std::numbers::pi;
 
-        for (auto i = 0*direction.size(); i < direction.size(); ++i) {
-            const auto K = permComponents(direction[i], cell_perm);
-            const auto D = effectiveExtent(direction[i], ntg, cell_size);
-            const auto r0 = effectiveRadius(K, D);
+                                   const auto K = permComponents(d, cell_perm);
+                                   const auto D = effectiveExtent(d, ntg, cell_size);
+                                   const auto r0 = effectiveRadius(K, D);
 
-            connection_factor[i] = angle * Kh[i]
-                / peacemanDenominator(r0, rw, skin_factor);
-        }
+                                   return angle * kh / peacemanDenominator(r0, rw, skin_factor);
+                               });
 
         return connection_factor;
     }
@@ -362,11 +372,13 @@ namespace Opm {
     }
 
     void WellConnections::loadCOMPDATX(const DeckRecord&                 record,
-                                       const ScheduleGrid&               grid,
                                        const std::string&                wname,
                                        const WDFAC&                      wdfac,
+                                       const ScheduleGrid&               grid,
                                        const KeywordLocation&            location,
-                                       const std::optional<std::string>& lgr_label)
+                                       const std::optional<std::string>& lgr_label,
+                                       [[maybe_unused]] const ParseContext& parseContext,
+                                       [[maybe_unused]] ErrorGuard&         errors)
     {
         const auto& itemI = record.getItem("I");
         const auto defaulted_I = itemI.defaultApplied(0) || (itemI.get<int>(0) == 0);
@@ -555,22 +567,27 @@ The cell ({},{},{}) in well {} is not active and the connection will be ignored)
     }
 
     void WellConnections::loadCOMPDAT(const DeckRecord&      record,
-                                      const ScheduleGrid&    grid,
                                       const std::string&     wname,
                                       const WDFAC&           wdfac,
-                                      const KeywordLocation& location)
+                                      const ScheduleGrid&    grid,
+                                      const KeywordLocation& location,
+                                      const ParseContext&    parseContext,
+                                      ErrorGuard&            errors)
     {
         // No LGR tag when processing the main grid COMPDAT keyword.
         const auto lgr_tag = std::optional<std::string>{}; // == nullopt.
 
-        this->loadCOMPDATX(record, grid, wname, wdfac, location, lgr_tag);
+        this->loadCOMPDATX(record, wname, wdfac, grid, location,
+                           lgr_tag, parseContext, errors);
     }
 
     void WellConnections::loadCOMPDATL(const DeckRecord&      record,
-                                       const ScheduleGrid&    grid,
                                        const std::string&     wname,
                                        const WDFAC&           wdfac,
-                                       const KeywordLocation& location)
+                                       const ScheduleGrid&    grid,
+                                       const KeywordLocation& location,
+                                       const ParseContext&    parseContext,
+                                       ErrorGuard&            errors)
     {
         // We're processing a local grid's connection data (COMPDATL or
         // COMPDATM keyword).  Convey this information to the keyword
@@ -578,13 +595,14 @@ The cell ({},{},{}) in well {} is not active and the connection will be ignored)
         const auto lgr_tag = std::make_optional
             (record.getItem<ParserKeywords::COMPDATX::LGR>().getTrimmedString(0));
 
-        this->loadCOMPDATX(record, grid, wname, wdfac, location, lgr_tag);
+        this->loadCOMPDATX(record, wname, wdfac, grid, location,
+                           lgr_tag, parseContext, errors);
     }
 
     void
     WellConnections::loadCOMPTRAJ(const DeckRecord&      record,
-                                  const ScheduleGrid&    grid,
                                   const std::string&     wname,
+                                  const ScheduleGrid&    grid,
                                   const KeywordLocation& location,
                                   WellTrajInfo&          wellTraj)
     {
@@ -802,8 +820,8 @@ CF and Kh items for well {} must both be specified or both defaulted/negative)",
     }
 
     void WellConnections::loadWELTRAJ(const DeckRecord& record,
-                                      [[maybe_unused]] const ScheduleGrid&    grid,
                                       [[maybe_unused]] const std::string&     wname,
+                                      [[maybe_unused]] const ScheduleGrid&    grid,
                                       [[maybe_unused]] const KeywordLocation& location)
     {
         double x = record.getItem("X").getSIDouble(0);
