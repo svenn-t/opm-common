@@ -1086,6 +1086,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/input/eclipse/EclipseState/Tables/TracerVdTable.hpp
   opm/input/eclipse/EclipseState/Tables/WatvisctTable.hpp
   opm/input/eclipse/EclipseState/Tables/WsfTable.hpp
+  opm/input/eclipse/EclipseState/Tables/ZmfvdTable.hpp
   opm/input/eclipse/EclipseState/TracerConfig.hpp
   opm/input/eclipse/EclipseState/Util/IOrderSet.hpp
   opm/input/eclipse/EclipseState/Util/OrderedMap.hpp
