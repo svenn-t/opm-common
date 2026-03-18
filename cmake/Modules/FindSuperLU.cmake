@@ -122,14 +122,17 @@ if(SUPERLU_FOUND)
   endif()
   if(NOT TARGET SuperLU::SuperLU)
     add_library(SuperLU::SuperLU UNKNOWN IMPORTED GLOBAL)
-    target_compile_definitions(SuperLU::SuperLU INTERFACE SUPERLU_INT_TYPE=int)
     set_target_properties(SuperLU::SuperLU
       PROPERTIES
       IMPORTED_LOCATION
         ${SUPERLU_LIBRARY}
-      INTERFACE_INCLUDE_DIRECTORIES
-        ${SUPERLU_INCLUDE_DIR}
     )
+    target_compile_definitions(SuperLU::SuperLU
+      INTERFACE
+        HAVE_SUPERLU=1
+        SUPERLU_INT_TYPE=int
+    )
+    target_include_directories(SuperLU::SuperLU INTERFACE ${SUPERLU_INCLUDE_DIR})
     if(TARGET BLAS::BLAS)
       target_link_libraries(SuperLU::SuperLU INTERFACE BLAS::BLAS)
     else()
