@@ -756,15 +756,22 @@ void set_dimensions( ParserItem& item,
                Each block of records is separated by an empty DeckRecord.
             */
             size_t record_nr = 0;
-            for (auto& rawRecord : rawKeyword) {
-                if (rawRecord.size() == 0) {
-                     keyword.addRecord( DeckRecord() );
-                     record_nr = 0;
+            try {
+                for (auto& rawRecord : rawKeyword) {
+                    if (rawRecord.size() == 0) {
+                         keyword.addRecord( DeckRecord() );
+                         record_nr = 0;
+                    }
+                    else {
+                        keyword.addRecord( this->getRecord( record_nr ).parse( parseContext, errors, rawRecord, active_unitsystem, default_unitsystem, rawKeyword.location() ) );
+                        record_nr++;
+                    }
                 }
-                else {
-                    keyword.addRecord( this->getRecord( record_nr ).parse( parseContext, errors, rawRecord, active_unitsystem, default_unitsystem, rawKeyword.location() ) );
-                    record_nr++;
-                }
+            }
+            catch (const std::invalid_argument& e) {
+                throw std::invalid_argument(
+                    fmt::format("Failed to parse the record {} out of {} of the keyword {}\n{}",
+                                record_nr + 1, rawKeyword.size(), keyword.name(), e.what()));
             }
         }
         else {
@@ -777,10 +784,11 @@ void set_dimensions( ParserItem& item,
                     keyword.addRecord( this->getRecord( record_nr ).parse( parseContext, errors, rawRecord, active_unitsystem, default_unitsystem, rawKeyword.location() ) );
                     record_nr++;
                 }
-            } catch (const std::invalid_argument& e) {
-                std::string msg = "Failed to process entry " + std::to_string(record_nr+1) + " out of " + std::to_string(rawKeyword.size())
-                                  + " of the keyword " + keyword.name() + "\n" + e.what();
-                throw std::invalid_argument(msg);
+            }
+            catch (const std::invalid_argument& e) {
+                throw std::invalid_argument(
+                    fmt::format("Failed to parse the record {} out of {} of the keyword {}\n{}",
+                                record_nr+1, rawKeyword.size(), keyword.name(), e.what()));
             }
         }
 
