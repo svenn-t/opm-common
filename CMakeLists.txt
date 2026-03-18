@@ -72,10 +72,6 @@ macro(opm-common_config_hook)
     target_compile_definitions(opmcommon PRIVATE HAVE_FNMATCH_H=1)
   endif()
 
-  if(dune-common_FOUND)
-    target_compile_definitions(opmcommon PUBLIC HAVE_DUNE_COMMON=1)
-  endif()
-
   target_compile_definitions(opmcommon INTERFACE HAVE_OPM_COMMON=1)
 endmacro()
 
