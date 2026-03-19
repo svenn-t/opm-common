@@ -126,7 +126,7 @@ list (APPEND ${project}_CONFIG_VARS ${${project}_CONFIG_VAR})
 message (STATUS "Writing config file \"${PROJECT_BINARY_DIR}/config.h\"...")
 set (CONFIG_H "${PROJECT_BINARY_DIR}/config.h.tmp")
 configure_vars (
-  FILE  CXX  ${CONFIG_H}
+  FILE  ${CONFIG_H}
   WRITE ${${project}_CONFIG_VARS}
         ${${project}_CONFIG_IMPL_VARS}
         ${TESTING_CONFIG_VARS}

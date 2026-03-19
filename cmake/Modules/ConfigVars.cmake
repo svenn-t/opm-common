@@ -1,9 +1,8 @@
 # - Create config.h based on a list of variables
 #
 # Synopsis:
-#   configure_vars (FILE syntax filename verb varlist)
+#   configure_vars (FILE filename verb varlist)
 # where
-#    syntax        CXX or CMAKE, depending on target
 #   filename      Full path (including name) of config.h
 #   verb          WRITE or APPEND if truncating or not
 #   varlist       List of variable names that has been defined
@@ -18,22 +17,19 @@
 #     "HAVE_BAR_VERSION_2"
 #     )
 #   configure_vars (
-#     FILE  CXX  ${PROJECT_BINARY_DIR}/config.h
+#     FILE  ${PROJECT_BINARY_DIR}/config.h
 #     WRITE ${FOO_CONFIG_VARS}
 #     )
 
 # Copyright (C) 2012 Uni Research AS
 # This file is licensed under the GNU General Public License v3.0
 
-function (configure_vars obj syntax filename verb)
+function (configure_vars obj filename verb)
   # this is just to make the syntax look like the build-in commands
   if (NOT ("X Y Z ${obj}" STREQUAL "X Y Z FILE" AND
         (("${verb}" STREQUAL "WRITE") OR ("${verb}" STREQUAL "APPEND"))))
     message (FATAL_ERROR "Syntax error in argument list")
   endif ()
-  if (NOT (("${syntax}" STREQUAL "CXX") OR ("${syntax}" STREQUAL "CMAKE")))
-    message (FATAL_ERROR "Invalid target syntax \"${syntax}\"")
-  endif (NOT (("${syntax}" STREQUAL "CXX") OR ("${syntax}" STREQUAL "CMAKE")))
 
   # truncate the file if the verb was "WRITE"
   if (verb STREQUAL "WRITE")
@@ -75,50 +71,20 @@ function (configure_vars obj syntax filename verb)
 
     else ()
 
-      # write a CMake statements that warns if the value has changed
-      if ("${syntax}" STREQUAL "CMAKE")
-        set (_db "\${") # to avoid parsing problems
-        # special case: if we have a truth variable HAVE_ and this is
-        # either just defined (as is), or set to 1 explicitly, then both
-        # of these count as "true", so put in a check that also accepts
-        # both of these values.
-        if (("${_var}" MATCHES "^HAVE_.*") AND
-             (("${${_var}}" STREQUAL "") OR ("${${_var}}" STREQUAL "1") OR ("${${_var}}" STREQUAL "TRUE") OR ("${${_var}}" STREQUAL "ON")))
-          set (_cond "(\"${_db}${_var}}\" STREQUAL \"\") OR (\"${_db}${_var}}\" STREQUAL \"1\") OR (\"${_db}${_var}}\" STREQUAL \"TRUE\") OR (\"${_db}${_var}}\" STREQUAL \"ON\")")
-        else ()
-          set (_cond "\"${_db}${_var}}\" STREQUAL \"${${_var}}\"")
-        endif ()
-        file (APPEND "${filename}" "if (DEFINED ${_var} AND NOT (${_cond}))\n")
-        file (APPEND "${filename}" "\tmessage (WARNING \"Incompatible value \\\"${_db}${_var}}\\\" of variable \\\"${_var}\\\"\")\n")
-        file (APPEND "${filename}" "endif ()\n")
-      endif ()
-
       # check for empty variable; variables that are explicitly set to false
       # is not included in this clause
       if ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
-        if ("${syntax}" STREQUAL "CMAKE")
-          file (APPEND "${filename}" "set (${_var})\n")
-        else ("${syntax}" STREQUAL "CMAKE")
-          file (APPEND "${filename}" "/* #undef ${_var} */\n")
-        endif ("${syntax}" STREQUAL "CMAKE")
+        file (APPEND "${filename}" "/* #undef ${_var} */\n")
       else ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL ""))
         # write to file using the correct syntax
-        if ("${syntax}" STREQUAL "CMAKE")
-          # escape backslash and double quote characters
-          string (REPLACE "\\" "\\\\" _quoted "${${_var}}")
-          string (REPLACE "\"" "\\\"" _quoted "${_quoted}")
-
-          file (APPEND "${filename}" "set (${_var} \"${_quoted}\")\n")
-        else ("${syntax}" STREQUAL "CMAKE")
-          if ("${_var}" MATCHES "^HAVE_.*")
-            file (APPEND "${filename}" "#define ${_var} 1\n")
-          else ()
-            file (APPEND "${filename}" "#define ${_var} ${${_var}}\n")
-          endif()
-        endif ("${syntax}" STREQUAL "CMAKE")
+        if ("${_var}" MATCHES "^HAVE_.*")
+          file (APPEND "${filename}" "#define ${_var} 1\n")
+        else ()
+          file (APPEND "${filename}" "#define ${_var} ${${_var}}\n")
+        endif()
 
       endif ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
       set (_prev_verbatim FALSE)
     endif ()
   endforeach(_var)
-endfunction (configure_vars obj syntax filename verb)
+endfunction (configure_vars obj filename verb)
