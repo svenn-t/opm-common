@@ -12,7 +12,6 @@
 #
 # Example:
 #   list (APPEND FOO_CONFIG_VARS
-#     "/* bar library */"
 #     "HAVE_BAR"
 #     "HAVE_BAR_VERSION_2"
 #     )
@@ -53,38 +52,22 @@ function (configure_vars obj filename verb)
   endif (_args)
 
   # process each variable
-  set (_prev_verbatim TRUE)
   foreach (_var IN LISTS _args)
-
     # massage the name to remove source code formatting
     string (REGEX REPLACE "^[\\n\\t\\ ]+" "" _var "${_var}")
     string (REGEX REPLACE "[\\n\\t\\ ]+$" "" _var "${_var}")
 
-    # if the name of a variable has the syntax of a comments, write it
-    # verbatim to the file; this can be used to create headings
-    if ("X Y Z ${_var}" MATCHES "^X Y Z /[/*]")
-      if (NOT _prev_verbatim)
-        file (APPEND "${filename}" "\n")
-      endif (NOT _prev_verbatim)
-      file (APPEND "${filename}" "${_var}\n")
-      set (_prev_verbatim TRUE)
-
-    else ()
-
-      # check for empty variable; variables that are explicitly set to false
-      # is not included in this clause
-      if ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
-        file (APPEND "${filename}" "/* #undef ${_var} */\n")
-      else ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL ""))
-        # write to file using the correct syntax
-        if ("${_var}" MATCHES "^HAVE_.*")
-          file (APPEND "${filename}" "#define ${_var} 1\n")
-        else ()
-          file (APPEND "${filename}" "#define ${_var} ${${_var}}\n")
-        endif()
-
-      endif ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
-      set (_prev_verbatim FALSE)
-    endif ()
+    # check for empty variable; variables that are explicitly set to false
+    # is not included in this clause
+    if ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
+      file (APPEND "${filename}" "/* #undef ${_var} */\n")
+    else ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL ""))
+      # write to file using the correct syntax
+      if ("${_var}" MATCHES "^HAVE_.*")
+        file (APPEND "${filename}" "#define ${_var} 1\n")
+      else ()
+        file (APPEND "${filename}" "#define ${_var} ${${_var}}\n")
+      endif()
+    endif ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
   endforeach(_var)
 endfunction (configure_vars obj filename verb)
