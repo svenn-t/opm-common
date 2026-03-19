@@ -271,9 +271,16 @@ macro(opm-common_targets_hook)
   )
 
   if(ENABLE_MOCKSIM)
-    add_library(mocksim msim/src/msim.cpp)
-    opm_add_target_options(TARGET mocksim)
-    target_link_libraries(mocksim PUBLIC opmcommon)
+    opm_add_library(
+      TARGET
+        mocksim
+      SOURCES
+        msim/src/msim.cpp
+      LIBRARIES
+        opmcommon
+      TYPE
+        STATIC
+    )
     target_include_directories(mocksim PUBLIC msim/include)
     add_executable(msim examples/msim.cpp)
     opm_add_target_options(TARGET msim)
