@@ -23,33 +23,29 @@
 # Copyright (C) 2012 Uni Research AS
 # This file is licensed under the GNU General Public License v3.0
 
-function (configure_vars obj filename verb)
-  # this is just to make the syntax look like the build-in commands
-  if (NOT ("X Y Z ${obj}" STREQUAL "X Y Z FILE" AND
-        (("${verb}" STREQUAL "WRITE"))))
-    message (FATAL_ERROR "Syntax error in argument list")
-  endif ()
+function(configure_vars)
+  cmake_parse_arguments(PARAM "" "TARGET;FILE" "VARIABLES" ${ARGN})
+  if(NOT PARAM_TARGET)
+    message(FATAL_ERROR "Function needs a TARGET parameter")
+  endif()
+  if(NOT PARAM_FILE)
+    message(FATAL_ERROR "Function needs a FILE parameter")
+  endif()
 
-  file (WRITE "${filename}" "")
+  file(WRITE "${PARAM_FILE}" "")
 
-  # whenever we use this, we also signal to the header files that we
-  # have "config.h". add this before any other files (known till now)
-  # to avoid confusion from other configuration files.
-  get_filename_component (_config_path "${filename}" PATH)
-  get_filename_component (_config_file "${filename}" NAME)
-  if ("${_config_file}" MATCHES "config\\.h(\\..+)?")
-    add_definitions (-DHAVE_CONFIG_H=1)
-    include_directories (BEFORE "${_config_path}")
-  endif ("${_config_file}" MATCHES "config\\.h(\\..+)?")
+  target_compile_definitions(${PARAM_TARGET} PRIVATE HAVE_CONFIG_H=1)
+  target_include_directories(${PARAM_TARGET}
+    BEFORE
+    PUBLIC
+      $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
+  )
 
   # only write the current value of each variable once
-  set (_args ${ARGN})
-  if (_args)
-    list (REMOVE_DUPLICATES _args)
-  endif (_args)
+  list (REMOVE_DUPLICATES PARAM_VARIABLES)
 
   # process each variable
-  foreach (_var IN LISTS _args)
+  foreach(_var IN LISTS PARAM_VARIABLES)
     # massage the name to remove source code formatting
     string (REGEX REPLACE "^[\\n\\t\\ ]+" "" _var "${_var}")
     string (REGEX REPLACE "[\\n\\t\\ ]+$" "" _var "${_var}")
@@ -57,14 +53,14 @@ function (configure_vars obj filename verb)
     # check for empty variable; variables that are explicitly set to false
     # is not included in this clause
     if ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
-      file (APPEND "${filename}" "/* #undef ${_var} */\n")
+      file (APPEND "${PARAM_FILE}" "/* #undef ${_var} */\n")
     else ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL ""))
       # write to file using the correct syntax
       if ("${_var}" MATCHES "^HAVE_.*")
-        file (APPEND "${filename}" "#define ${_var} 1\n")
+        file (APPEND "${PARAM_FILE}" "#define ${_var} 1\n")
       else ()
-        file (APPEND "${filename}" "#define ${_var} ${${_var}}\n")
+        file (APPEND "${PARAM_FILE}" "#define ${_var} ${${_var}}\n")
       endif()
     endif ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
   endforeach(_var)
-endfunction (configure_vars obj filename verb)
+endfunction()
