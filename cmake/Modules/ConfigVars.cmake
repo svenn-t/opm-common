@@ -46,10 +46,6 @@ function(configure_vars)
 
   # process each variable
   foreach(_var IN LISTS PARAM_VARIABLES)
-    # massage the name to remove source code formatting
-    string (REGEX REPLACE "^[\\n\\t\\ ]+" "" _var "${_var}")
-    string (REGEX REPLACE "[\\n\\t\\ ]+$" "" _var "${_var}")
-
     # check for empty variable; variables that are explicitly set to false
     # is not included in this clause
     if ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
