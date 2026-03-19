@@ -199,8 +199,8 @@ namespace Opm {
             if (! (i < grid.getNX() && j < grid.getNY() && k < grid.getNZ()) ) {
                 OpmLog::warning(
                     fmt::format(
-                        "Connection in numerical aquifer {} has out-of-bounds IJK ({}, {}, {}) - skip this connection",
-                                            this->id_, i, j, k));
+                        "Connection in numerical aquifer {} has out-of-bounds IJK ({}, {}, {}), allowed range is (1-{}, 1-{}, 1-{}). Connection skipped.",
+                                            this->id_, i+1, j+1, k+1, grid.getNX(), grid.getNY(), grid.getNZ()));
                 continue;
             }
             if (!actnum[grid.getGlobalIndex(i, j, k)]) continue;
