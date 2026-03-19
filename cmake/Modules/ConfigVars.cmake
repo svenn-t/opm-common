@@ -26,14 +26,11 @@
 function (configure_vars obj filename verb)
   # this is just to make the syntax look like the build-in commands
   if (NOT ("X Y Z ${obj}" STREQUAL "X Y Z FILE" AND
-        (("${verb}" STREQUAL "WRITE") OR ("${verb}" STREQUAL "APPEND"))))
+        (("${verb}" STREQUAL "WRITE"))))
     message (FATAL_ERROR "Syntax error in argument list")
   endif ()
 
-  # truncate the file if the verb was "WRITE"
-  if (verb STREQUAL "WRITE")
-    file (WRITE "${filename}" "")
-  endif (verb STREQUAL "WRITE")
+  file (WRITE "${filename}" "")
 
   # whenever we use this, we also signal to the header files that we
   # have "config.h". add this before any other files (known till now)
