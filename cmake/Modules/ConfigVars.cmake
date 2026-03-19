@@ -42,21 +42,21 @@ function(configure_vars)
   )
 
   # only write the current value of each variable once
-  list (REMOVE_DUPLICATES PARAM_VARIABLES)
+  list(REMOVE_DUPLICATES PARAM_VARIABLES)
 
   # process each variable
   foreach(_var IN LISTS PARAM_VARIABLES)
     # check for empty variable; variables that are explicitly set to false
     # is not included in this clause
-    if ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
+    if((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
       file (APPEND "${PARAM_FILE}" "/* #undef ${_var} */\n")
-    else ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL ""))
+    else()
       # write to file using the correct syntax
-      if ("${_var}" MATCHES "^HAVE_.*")
+      if("${_var}" MATCHES "^HAVE_.*")
         file (APPEND "${PARAM_FILE}" "#define ${_var} 1\n")
-      else ()
+      else()
         file (APPEND "${PARAM_FILE}" "#define ${_var} ${${_var}}\n")
       endif()
-    endif ((NOT DEFINED ${_var}) OR ("${${_var}}" STREQUAL "") OR NOT _var)
-  endforeach(_var)
+    endif()
+  endforeach()
 endfunction()
