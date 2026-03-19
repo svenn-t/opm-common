@@ -110,7 +110,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <format>
 #include <functional>
 #include <initializer_list>
 #include <numeric>
@@ -2850,7 +2849,7 @@ ZmfvdTable::ZmfvdTable(const DeckItem& item, const int tableID, const int numCom
 {
     m_schema.addColumn(ColumnSchema("DEPTH", Table::STRICTLY_INCREASING, Table::DEFAULT_NONE));
     for (int c = 0; c < numComponents; ++c) {
-        m_schema.addColumn(ColumnSchema(std::format("Z_COMP{}", c),
+        m_schema.addColumn(ColumnSchema(fmt::format("Z_COMP{}", c),
                                         Table::RANDOM, Table::DEFAULT_NONE));
     }
 
@@ -2858,7 +2857,7 @@ ZmfvdTable::ZmfvdTable(const DeckItem& item, const int tableID, const int numCom
 
     const auto ncol = static_cast<std::size_t>(1 + numComponents);
     if ( item.data_size() % ncol != 0) {
-        const std::string reason = std::format("ZMFVD table {}: number of data elements ({}) is not a "
+        const std::string reason = fmt::format("ZMFVD table {}: number of data elements ({}) is not a "
                         "multiple of expected number of columns (1 + {} components = {})",
                         tableID + 1, item.data_size(), numComponents, ncol);
         throw OpmInputError(reason, location);
@@ -2885,7 +2884,7 @@ ZmfvdTable::ZmfvdTable(const DeckItem& item, const int tableID, const int numCom
         constexpr double epsilon = 1.e-5;
         const double sum_fractions = std::accumulate(moles.begin(), moles.end(), 0.);
         if (std::abs(sum_fractions - 1.) > epsilon) {
-            const std::string reason = std::format("ZMFVD table {}: sum of mole fractions in row {} is not 1 (sum is {})",
+            const std::string reason = fmt::format("ZMFVD table {}: sum of mole fractions in row {} is not 1 (sum is {})",
                             tableID + 1, row + 1, sum_fractions);
             throw OpmInputError(reason, location);
         }
@@ -2902,7 +2901,7 @@ const TableColumn&
 ZmfvdTable::getMoleFractionColumn(const int componentIdx) const
 {
     if (componentIdx < 0 || componentIdx >= this->numComponents_) {
-        throw std::out_of_range(std::format(
+        throw std::out_of_range(fmt::format(
             "ZmfvdTable::getMoleFractionColumn: componentIdx {} out of valid range [0, {})",
             componentIdx,
             this->numComponents_ - 1));
