@@ -453,7 +453,6 @@ include(GNUInstallDirs)
 set(OPM_PROJECT_EXTRA_CODE_INSTALLED
   "set(OPM_MACROS_ROOT ${CMAKE_INSTALL_FULL_DATADIR}/opm)
   list(APPEND CMAKE_MODULE_PATH \${OPM_MACROS_ROOT}/cmake/Modules)
-  include(OpmPackage)
   include(OpmPolicies)
   OpmSetPolicies()"
 )
@@ -461,7 +460,6 @@ set(OPM_PROJECT_EXTRA_CODE_INSTALLED
 set(OPM_PROJECT_EXTRA_CODE_INTREE
   "set(OPM_MACROS_ROOT ${OPM_MACROS_ROOT})
   list(APPEND CMAKE_MODULE_PATH \${OPM_MACROS_ROOT}/cmake/Modules)
-  include(OpmPackage)
   include(OpmPolicies)
   OpmSetPolicies()"
 )

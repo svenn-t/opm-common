@@ -66,8 +66,8 @@ endif()
 OpmInitProjVars ()
 OpmInitDirVars ()
 
+# For prereqs-file
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
-include(OpmPackage)
 
 set (${project}_SUITE "opm")
 
