@@ -44,7 +44,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_test()
     NNCCollection ncol;
     // Global NNCS
     {
-        NNC global_nnc;
+        NNCDataContainer global_nnc;
         // the first entry is invalid because the host cell is refined
         // it should be filtered out
         global_nnc.addNNC(0, 2, 0.45600000E+01);
@@ -59,7 +59,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_test()
 
         //NNC sorts the cell indices, so we can add them in any order
         // FOR THIS WE REQUIRE SPECIFIC ORDER, HERE IS THE BUG
-        NNCDiffGrid lgr1_nnc;
+        NNCDataContainerDiffGrid lgr1_nnc;
         lgr1_nnc.addNNC(0, 1,0.78900000E+03);
         lgr1_nnc.addNNC(2, 1,0.78900000E+03);
         lgr1_nnc.addNNC(1, 3,0.78900000E+03);
@@ -76,7 +76,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
     NNCCollection ncol;
     // Global NNCS
     {
-        NNC global_nnc;
+        NNCDataContainer global_nnc;
         // the first entry is invalid because the host cell is refined
         // it should be filtered out
         global_nnc.addNNC(0, 2, 0.45600000E+01);
@@ -85,7 +85,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
     }
 
     {
-        NNC lgr1_nnc;
+        NNCDataContainer lgr1_nnc;
         lgr1_nnc.addNNC(0, 1,0.78900000E+03);
         lgr1_nnc.addNNC(2, 1,0.78900000E+03);
         lgr1_nnc.addNNC(1, 3,0.78900000E+03);
@@ -93,7 +93,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
     }
 
     {
-        NNC lgr2_nnc;
+        NNCDataContainer lgr2_nnc;
         lgr2_nnc.addNNC(0, 1,0.78900000E+03);
         lgr2_nnc.addNNC(2, 1,0.78900000E+03);
         lgr2_nnc.addNNC(1, 3,0.78900000E+03);
@@ -101,7 +101,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
     }
 
     {
-        NNC lgr3_nnc;
+        NNCDataContainer lgr3_nnc;
         lgr3_nnc.addNNC(0, 1,0.78900000E+03);
         lgr3_nnc.addNNC(2, 1,0.78900000E+03);
         lgr3_nnc.addNNC(1, 3,0.78900000E+03);
@@ -115,7 +115,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
         // LGR1 and GLOBAL GRID (1,0)
         //NNC sorts the cell indices, so we can add them in any order
         // FOR THIS WE REQUIRE SPECIFIC ORDER, HERE IS THE BUG
-        NNCDiffGrid lgr1_nnc;
+        NNCDataContainerDiffGrid lgr1_nnc;
         lgr1_nnc.addNNC(0, 1,0.78900000E+03);
         lgr1_nnc.addNNC(2, 1,0.78900000E+03);
         lgr1_nnc.addNNC(1, 3,0.78900000E+03);
@@ -128,7 +128,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
         // grid LGR2 and GLOBAL GRID (2,0)
         //NNC sorts the cell indices, so we can add them in any order
         // FOR THIS WE REQUIRE SPECIFIC ORDER, HERE IS THE BUG
-        NNCDiffGrid lgr2_nnc;
+        NNCDataContainerDiffGrid lgr2_nnc;
         lgr2_nnc.addNNC(0, 2,0.78900000E+03);
         lgr2_nnc.addNNC(2, 2,0.78900000E+03);
         lgr2_nnc.addNNC(1, 4,0.78900000E+03);
@@ -140,7 +140,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
         // NNCL NNCG
         // grid LGR2 and GLOBAL GRID (2,0)
 
-        NNCDiffGrid lgr3_nnc;
+        NNCDataContainerDiffGrid lgr3_nnc;
         lgr3_nnc.addNNC(0, 3,0.78900000E+03);
         lgr3_nnc.addNNC(2, 3,0.78900000E+03);
         ncol.addNNC(3, 0, lgr3_nnc);
@@ -148,7 +148,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
 
     {
         // LGR1 LGR3
-        NNCDiffGrid lgr1_lgr2_nnc;
+        NNCDataContainerDiffGrid lgr1_lgr2_nnc;
         lgr1_lgr2_nnc.addNNC(0, 1,0.78900000E+03);
         lgr1_lgr2_nnc.addNNC(2, 1,0.78900000E+03);
         lgr1_lgr2_nnc.addNNC(1, 3,0.78900000E+03);
@@ -158,7 +158,7 @@ NNCCollection nnc_collection_opm_lgr_nnc_same_diff()
 
     {
         // LGR1 LGR2
-        NNCDiffGrid lgr1_lgr3_nnc;
+        NNCDataContainerDiffGrid lgr1_lgr3_nnc;
         lgr1_lgr3_nnc.addNNC(0, 1,0.78900000E+03);
         lgr1_lgr3_nnc.addNNC(2, 1,0.78900000E+03);
         lgr1_lgr3_nnc.addNNC(1, 3,0.78900000E+03);
@@ -405,16 +405,16 @@ END
     )"};
 
 
-static NNC make_nnc(std::size_t c1, std::size_t c2, double trans)
+static NNCDataContainer make_nnc(std::size_t c1, std::size_t c2, double trans)
 {
-    NNC n;
+    NNCDataContainer n;
     n.addNNC(c1, c2, trans);
     return n;
 }
 
-static NNCDiffGrid make_nnc_diffgrid(std::size_t c1, std::size_t c2, double trans)
+static NNCDataContainerDiffGrid make_nnc_diffgrid(std::size_t c1, std::size_t c2, double trans)
 {
-    NNCDiffGrid n;
+    NNCDataContainerDiffGrid n;
     n.addNNC(c1, c2, trans);
     return n;
 }
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_SUITE(SameGrid)
 BOOST_AUTO_TEST_CASE(add_and_get)
 {
     NNCCollection col;
-    NNC nnc = make_nnc(1, 2, 0.5);
+    NNCDataContainer nnc = make_nnc(1, 2, 0.5);
     col.addNNC(std::size_t{0}, nnc);
 
     BOOST_CHECK(col.getNNC(std::size_t{0}) == nnc);
@@ -459,9 +459,9 @@ BOOST_AUTO_TEST_CASE(add_and_get)
 BOOST_AUTO_TEST_CASE(add_populate_and_get_each)
 {
     NNCCollection col;
-    NNC n0 = make_nnc(1, 2, 1.0);
-    NNC n1 = make_nnc(3, 4, 2.0);
-    NNC n2 = make_nnc(5, 6, 3.0);
+    NNCDataContainer n0 = make_nnc(1, 2, 1.0);
+    NNCDataContainer n1 = make_nnc(3, 4, 2.0);
+    NNCDataContainer n2 = make_nnc(5, 6, 3.0);
 
     col.addNNC(std::size_t{0}, n0);
     col.addNNC(std::size_t{1}, n1);
@@ -521,7 +521,7 @@ BOOST_AUTO_TEST_SUITE(GlobalNNC)
 BOOST_AUTO_TEST_CASE(add_and_get)
 {
     NNCCollection col;
-    NNC nnc = make_nnc(10, 20, 1.5);
+    NNCDataContainer nnc = make_nnc(10, 20, 1.5);
     col.addNNC(nnc);
 
     BOOST_CHECK(col.getGlobalNNC() == nnc);
@@ -563,7 +563,7 @@ BOOST_AUTO_TEST_SUITE(CrossGrid)
 BOOST_AUTO_TEST_CASE(add_and_get)
 {
     NNCCollection col;
-    NNCDiffGrid nnc = make_nnc_diffgrid(3, 4, 0.5);
+    NNCDataContainerDiffGrid nnc = make_nnc_diffgrid(3, 4, 0.5);
     col.addNNC(std::size_t{0}, std::size_t{1}, nnc);
 
     BOOST_CHECK(col.getNNC(std::size_t{0}, std::size_t{1}) == nnc);
@@ -573,7 +573,7 @@ BOOST_AUTO_TEST_CASE(order_independent_test)
 {
     // getNNC(g1,g2) and getNNC(g2,g1) must resolve to the same entry.
     NNCCollection col;
-    NNCDiffGrid nnc = make_nnc_diffgrid(10, 20, 2.5);
+    NNCDataContainerDiffGrid nnc = make_nnc_diffgrid(10, 20, 2.5);
     col.addNNC(std::size_t{2}, std::size_t{5}, nnc);
 
     BOOST_CHECK(col.getNNC(std::size_t{2}, std::size_t{5}) == nnc);
@@ -583,9 +583,9 @@ BOOST_AUTO_TEST_CASE(order_independent_test)
 BOOST_AUTO_TEST_CASE(create_add_retrieve_each)
 {
     NNCCollection col;
-    NNCDiffGrid n01 = make_nnc_diffgrid(1, 2, 1.0);
-    NNCDiffGrid n02 = make_nnc_diffgrid(3, 4, 2.0);
-    NNCDiffGrid n12 = make_nnc_diffgrid(5, 6, 3.0);
+    NNCDataContainerDiffGrid n01 = make_nnc_diffgrid(1, 2, 1.0);
+    NNCDataContainerDiffGrid n02 = make_nnc_diffgrid(3, 4, 2.0);
+    NNCDataContainerDiffGrid n12 = make_nnc_diffgrid(5, 6, 3.0);
 
     col.addNNC(std::size_t{0}, std::size_t{1}, n01);
     col.addNNC(std::size_t{0}, std::size_t{2}, n02);
@@ -649,8 +649,8 @@ BOOST_AUTO_TEST_SUITE(MapAccessors)
 BOOST_AUTO_TEST_CASE(same_grid_map_contains_added_entries)
 {
     NNCCollection col;
-    NNC n0 = make_nnc(1, 2, 1.0);
-    NNC n1 = make_nnc(3, 4, 2.0);
+    NNCDataContainer n0 = make_nnc(1, 2, 1.0);
+    NNCDataContainer n1 = make_nnc(3, 4, 2.0);
 
     col.addNNC(std::size_t{0}, n0);
     col.addNNC(std::size_t{1}, n1);
@@ -664,8 +664,8 @@ BOOST_AUTO_TEST_CASE(same_grid_map_contains_added_entries)
 BOOST_AUTO_TEST_CASE(diff_grid_map_contains_added_entries)
 {
     NNCCollection col;
-    NNCDiffGrid n01 = make_nnc_diffgrid(1, 2, 1.0);
-    NNCDiffGrid n23 = make_nnc_diffgrid(3, 4, 2.0);
+    NNCDataContainerDiffGrid n01 = make_nnc_diffgrid(1, 2, 1.0);
+    NNCDataContainerDiffGrid n23 = make_nnc_diffgrid(3, 4, 2.0);
 
     col.addNNC(std::size_t{0}, std::size_t{1}, n01);
     col.addNNC(std::size_t{2}, std::size_t{3}, n23);
@@ -716,7 +716,6 @@ BOOST_AUTO_TEST_CASE(write_nnc_lgr_test_nnc)
     auto deck = Opm::Parser{}.parseString(opm_lgr_nnc_test);
     EclipseState es(deck);
     const auto& egrid = es.getInputGrid();
-    auto ncc_col = Opm::NNCCollection{es.getInputNNC()};
     auto nnc_case = nnc_collection_opm_lgr_nnc_test();
 
     Opm::UnitSystem units(1);  // FIELD
@@ -794,9 +793,9 @@ BOOST_AUTO_TEST_CASE(local_global_insertion_normalises_to_same_output)
     const auto& egrid = es.getInputGrid();
 
     NNCCollection col;
-    col.addNNC(NNC{});
+    col.addNNC(NNCDataContainer{});
 
-    NNCDiffGrid cross;
+    NNCDataContainerDiffGrid cross;
     cross.addNNC(5, 2, 100.0);  // cell1=5=LGR cell, cell2=2=global cell
     // addNNC(grid1=1=LGR, grid2=0=global): grid indices normalise to (0,1),
     // cells are NOT swapped → cell1 stays associated with grid1 (LGR),
@@ -831,7 +830,7 @@ BOOST_AUTO_TEST_CASE(no_cross_grid_nnc_produces_no_nncl_nncg)
     EclipseGrid grid(4, 4, 4);
 
     NNCCollection col;
-    NNC n;
+    NNCDataContainer n;
     n.addNNC(0, 15, 1.0);
     col.addNNC(n);
 
