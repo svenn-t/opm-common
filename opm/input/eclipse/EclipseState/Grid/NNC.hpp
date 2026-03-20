@@ -247,6 +247,31 @@ public:
         return m_diffGridNNCs;
     }
 
+    // ---- factory ----------------------------------------------------------
+
+    /// Build an NNCCollection from the three output containers produced by
+    /// EclGenericWriter::exportNncStructure_().
+    ///
+    /// @param outputNnc           Same-grid NNCs, indexed by grid level.
+    ///                            outputNnc[level] holds the NNCs internal to
+    ///                            grid \p level (0 = main grid).
+    ///
+    /// @param outputNncGlobalLocal  Global-to-local NNCs, indexed by local
+    ///                            level offset.  outputNncGlobalLocal[i]
+    ///                            holds connections between the main grid
+    ///                            (level 0) and the refined level \p i+1.
+    ///
+    /// @param outputAmalgamatedNnc  LGR-to-LGR NNCs, indexed by
+    ///                            (smallerLevel-1, largerLevel-smallerLevel-1).
+    ///                            outputAmalgamatedNnc[i][j] holds connections
+    ///                            between level \p i+1 and level \p i+j+2.
+    ///
+    /// @return  An NNCCollection populated with all three NNC types.
+    static NNCCollection fromLGROutputContainers(
+        const std::vector<std::vector<NNCdata>>& outputNnc,
+        const std::vector<std::vector<NNCdata>>& outputNncGlobalLocal,
+        const std::vector<std::vector<std::vector<NNCdata>>>& outputAmalgamatedNnc);
+
     bool operator==(const NNCCollection& other) const
     {
         return m_sameGridNNCs == other.m_sameGridNNCs &&
