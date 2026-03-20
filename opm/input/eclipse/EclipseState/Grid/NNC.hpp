@@ -219,7 +219,7 @@ public:
     NNCDataContainerDiffGrid&       getNNC(std::size_t grid1, std::size_t grid2);
 
     bool hasCrossGridNNC(std::size_t grid1, std::size_t grid2) const;
-
+    bool empty() const { return m_sameGridNNCs.empty() && m_diffGridNNCs.empty(); }
     // ---- same-grid access -------------------------------------------------
 
     const NNCDataContainer& getNNC(std::size_t grid) const;
@@ -233,6 +233,19 @@ public:
     NNCDataContainer&       getGlobalNNC();
 
     bool hasGlobalNNC() const { return hasSameGridNNC(0); };
+
+    /// Returns true if the given grid has any NNC involvement:
+    /// same-grid NNCs, or cross-grid NNCs with any other grid.
+    bool hasNNCForGrid(std::size_t grid_index) const
+    {
+        if (hasSameGridNNC(grid_index))
+            return true;
+        for (const auto& entry : m_diffGridNNCs) {
+            if (entry.first.first == grid_index || entry.first.second == grid_index)
+                return true;
+        }
+        return false;
+    }
 
 
     /// Returns a view of all same-grid NNCs as (grid_index, NNC) pairs.
