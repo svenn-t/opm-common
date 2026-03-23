@@ -125,7 +125,7 @@ OPM_HOST_DEVICE auto getSolventSaturation_(typename std::enable_if<!HasMember_so
  * model. Further quantities are computed "on the fly" and are accessing them is thus
  * relatively slow.
  */
-template <class ScalarT,
+template <class ValueT,
           class FluidSystemT,
           bool storeTemperature = false,
           bool storeEnthalpy = false,
@@ -140,7 +140,7 @@ class BlackOilFluidState
 {
 public:
     using FluidSystem = FluidSystemT;
-    using Scalar = ScalarT;
+    using ValueType = ValueT;
 
     static constexpr int waterPhaseIdx = FluidSystem::waterPhaseIdx;
     static constexpr int gasPhaseIdx = FluidSystem::gasPhaseIdx;
@@ -173,7 +173,7 @@ public:
     template<class OtherFluidSystemType>
     auto withOtherFluidSystem(const OtherFluidSystemType& other) const
     {
-        auto bfstate = BlackOilFluidState<Scalar, OtherFluidSystemType,
+        auto bfstate = BlackOilFluidState<ValueType, OtherFluidSystemType,
                                   storeTemperature,
                                   storeEnthalpy,
                                   enableDissolution,
@@ -269,26 +269,26 @@ public:
         setTotalSaturation(fs.totalSaturation());
 
         if constexpr (enableDissolution) {
-            setRs(BlackOil::getRs_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
-            setRv(BlackOil::getRv_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
+            setRs(BlackOil::getRs_<FluidSystem, FluidState, ValueType>(fs, pvtRegionIdx));
+            setRv(BlackOil::getRv_<FluidSystem, FluidState, ValueType>(fs, pvtRegionIdx));
         }
         if constexpr (enableVapwat) {
-            setRvw(BlackOil::getRvw_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
+            setRvw(BlackOil::getRvw_<FluidSystem, FluidState, ValueType>(fs, pvtRegionIdx));
         }
         if constexpr (enableDissolutionInWater) {
-            setRsw(BlackOil::getRsw_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
+            setRsw(BlackOil::getRsw_<FluidSystem, FluidState, ValueType>(fs, pvtRegionIdx));
         }
         if constexpr (enableBrine){
-            setSaltConcentration(BlackOil::getSaltConcentration_<FluidState, Scalar>(fs, pvtRegionIdx));
+            setSaltConcentration(BlackOil::getSaltConcentration_<FluidState, ValueType>(fs, pvtRegionIdx));
         }
         if constexpr (enableSaltPrecipitation){
-            setSaltSaturation(BlackOil::getSaltSaturation_<FluidSystem, FluidState, Scalar>(fs, pvtRegionIdx));
+            setSaltSaturation(BlackOil::getSaltSaturation_<FluidSystem, FluidState, ValueType>(fs, pvtRegionIdx));
         }
         if constexpr (enableSolvent) {
-            setSolventSaturation(BlackOil::getSolventSaturation_<FluidState, Scalar>(fs, pvtRegionIdx));
-            setSolventDensity(BlackOil::getSolventDensity_<FluidState, Scalar>(fs, pvtRegionIdx));
-            setSolventInvB(BlackOil::getSolventInvB_<FluidState, Scalar>(fs, pvtRegionIdx));
-            setRsSolw(BlackOil::getRsSolw_<FluidState, Scalar>(fs, pvtRegionIdx));
+            setSolventSaturation(BlackOil::getSolventSaturation_<FluidState, ValueType>(fs, pvtRegionIdx));
+            setSolventDensity(BlackOil::getSolventDensity_<FluidState, ValueType>(fs, pvtRegionIdx));
+            setSolventInvB(BlackOil::getSolventInvB_<FluidState, ValueType>(fs, pvtRegionIdx));
+            setRsSolw(BlackOil::getRsSolw_<FluidState, ValueType>(fs, pvtRegionIdx));
         }
         for (unsigned storagePhaseIdx = 0; storagePhaseIdx < numStoragePhases; ++storagePhaseIdx) {
             unsigned phaseIdx = storageToCanonicalPhaseIndex_(storagePhaseIdx, fluidSystem());
@@ -299,7 +299,7 @@ public:
             if constexpr (storeEnthalpy)
                 setEnthalpy(phaseIdx, fs.enthalpy(phaseIdx));
 
-            setInvB(phaseIdx, getInvB_<FluidSystem, FluidState, Scalar>(fs, phaseIdx, pvtRegionIdx, fluidSystem()));
+            setInvB(phaseIdx, getInvB_<FluidSystem, FluidState, ValueType>(fs, phaseIdx, pvtRegionIdx, fluidSystem()));
         }
     }
 
@@ -315,19 +315,19 @@ public:
     /*!
      * \brief Set the pressure of a fluid phase [-].
      */
-    OPM_HOST_DEVICE void setPressure(unsigned phaseIdx, const Scalar& p)
+    OPM_HOST_DEVICE void setPressure(unsigned phaseIdx, const ValueType& p)
     { pressure_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())] = p; }
 
     /*!
      * \brief Set the saturation of a fluid phase [-].
      */
-    OPM_HOST_DEVICE void setSaturation(unsigned phaseIdx, const Scalar& S)
+    OPM_HOST_DEVICE void setSaturation(unsigned phaseIdx, const ValueType& S)
     { saturation_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())] = S; }
 
     /*!
      * \brief Set the total saturation used for sequential methods
      */
-    OPM_HOST_DEVICE void setTotalSaturation(const Scalar& value)
+    OPM_HOST_DEVICE void setTotalSaturation(const ValueType& value)
     {
         totalSaturation_ = value;
     }
@@ -338,7 +338,7 @@ public:
      * If storeTemperature arguments are not set
      * to true, this method will throw an exception!
      */
-    OPM_HOST_DEVICE void setTemperature(const Scalar& value)
+    OPM_HOST_DEVICE void setTemperature(const ValueType& value)
     {
         assert(storeTemperature);
 
@@ -351,7 +351,7 @@ public:
      * If the storeEnthalpy template argument is not set to true, this method will throw
      * an exception!
      */
-    OPM_HOST_DEVICE void setEnthalpy(unsigned phaseIdx, const Scalar& value)
+    OPM_HOST_DEVICE void setEnthalpy(unsigned phaseIdx, const ValueType& value)
     {
         assert(storeEnthalpy);
 
@@ -361,13 +361,13 @@ public:
     /*!
      * \ brief Set the inverse formation volume factor of a fluid phase
      */
-    OPM_HOST_DEVICE void setInvB(unsigned phaseIdx, const Scalar& b)
+    OPM_HOST_DEVICE void setInvB(unsigned phaseIdx, const ValueType& b)
     { invB_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())] = b; }
 
     /*!
      * \ brief Set the density of a fluid phase
      */
-    OPM_HOST_DEVICE void setDensity(unsigned phaseIdx, const Scalar& rho)
+    OPM_HOST_DEVICE void setDensity(unsigned phaseIdx, const ValueType& rho)
     { density_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())] = rho; }
 
     /*!
@@ -375,7 +375,7 @@ public:
      *
      * This quantity is very specific to the black-oil model.
      */
-    OPM_HOST_DEVICE void setRs(const Scalar& newRs)
+    OPM_HOST_DEVICE void setRs(const ValueType& newRs)
     { *Rs_ = newRs; }
 
     /*!
@@ -383,7 +383,7 @@ public:
      *
      * This quantity is very specific to the black-oil model.
      */
-    OPM_HOST_DEVICE void setRv(const Scalar& newRv)
+    OPM_HOST_DEVICE void setRv(const ValueType& newRv)
     { *Rv_ = newRv; }
 
     /*!
@@ -391,7 +391,7 @@ public:
      *
      * This quantity is very specific to the black-oil model.
      */
-    OPM_HOST_DEVICE void setRvw(const Scalar& newRvw)
+    OPM_HOST_DEVICE void setRvw(const ValueType& newRvw)
     { *Rvw_ = newRvw; }
 
     /*!
@@ -399,61 +399,61 @@ public:
      *
      * This quantity is very specific to the black-oil model.
      */
-    OPM_HOST_DEVICE void setRsw(const Scalar& newRsw)
+    OPM_HOST_DEVICE void setRsw(const ValueType& newRsw)
     { *Rsw_ = newRsw; }
 
     /*!
      * \brief Set the salt concentration.
      */
-    OPM_HOST_DEVICE void setSaltConcentration(const Scalar& newSaltConcentration)
+    OPM_HOST_DEVICE void setSaltConcentration(const ValueType& newSaltConcentration)
     { *saltConcentration_ = newSaltConcentration; }
 
     /*!
      * \brief Set the solid salt saturation.
      */
-    OPM_HOST_DEVICE void setSaltSaturation(const Scalar& newSaltSaturation)
+    OPM_HOST_DEVICE void setSaltSaturation(const ValueType& newSaltSaturation)
     { *saltSaturation_ = newSaltSaturation; }
 
     /*!
      * \brief Set the solvent saturation.
      */
-    OPM_HOST_DEVICE void setSolventSaturation(const Scalar& newSolventSaturation)
+    OPM_HOST_DEVICE void setSolventSaturation(const ValueType& newSolventSaturation)
     { *solventSaturation_ = newSolventSaturation; }
 
     /*!
      * \brief Set the solvent density [kg/m^3].
      */
-    OPM_HOST_DEVICE void setSolventDensity(const Scalar& newSolventDensity)
+    OPM_HOST_DEVICE void setSolventDensity(const ValueType& newSolventDensity)
     { *solventDensity_ = newSolventDensity; }
 
     /*!
      * \brief Set the solvent inverse formation volume factor [-].
      */
-    OPM_HOST_DEVICE void setSolventInvB(const Scalar& newSolventInvB)
+    OPM_HOST_DEVICE void setSolventInvB(const ValueType& newSolventInvB)
     { *solventInvB_ = newSolventInvB; }
 
     /*!
      * \brief Set the solvent dissolution factor in water [m^3/m^3].
      */
-    OPM_HOST_DEVICE void setRsSolw(const Scalar& newRsSolw)
+    OPM_HOST_DEVICE void setRsSolw(const ValueType& newRsSolw)
     { *rsSolw_ = newRsSolw; }
 
     /*!
      * \brief Return the pressure of a fluid phase [Pa]
      */
-    OPM_HOST_DEVICE const Scalar& pressure(unsigned phaseIdx) const
+    OPM_HOST_DEVICE const ValueType& pressure(unsigned phaseIdx) const
     { return pressure_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())]; }
 
     /*!
      * \brief Return the saturation of a fluid phase [-]
      */
-    OPM_HOST_DEVICE const Scalar& saturation(unsigned phaseIdx) const
+    OPM_HOST_DEVICE const ValueType& saturation(unsigned phaseIdx) const
     { return saturation_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())]; }
 
     /*!
      * \brief Return the total saturation needed for sequential
      */
-    OPM_HOST_DEVICE const Scalar& totalSaturation() const
+    OPM_HOST_DEVICE const ValueType& totalSaturation() const
     {
         return totalSaturation_;
     }
@@ -461,7 +461,7 @@ public:
     /*!
      * \brief Return the temperature [K]
      */
-    OPM_HOST_DEVICE Scalar temperature(unsigned) const
+    OPM_HOST_DEVICE ValueType temperature(unsigned) const
     {
         if constexpr (storeTemperature) {
             return *temperature_;
@@ -476,7 +476,7 @@ public:
      * This factor expresses the change of density of a pure phase due to increased
      * pressure and temperature at reservoir conditions compared to surface conditions.
      */
-    OPM_HOST_DEVICE const Scalar& invB(unsigned phaseIdx) const
+    OPM_HOST_DEVICE const ValueType& invB(unsigned phaseIdx) const
     { return invB_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())]; }
 
     /*!
@@ -486,12 +486,12 @@ public:
      * of gas at surface conditions per cubic meter of liquid oil at surface
      * conditions. This method is specific to the black-oil model.
      */
-    OPM_HOST_DEVICE Scalar Rs() const
+    OPM_HOST_DEVICE ValueType Rs() const
     {
         if constexpr (enableDissolution) {
             return *Rs_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
@@ -502,10 +502,10 @@ public:
      * of liquid oil at surface conditions per cubic meter of gas at surface
      * conditions. This method is specific to the black-oil model.
      */
-    OPM_HOST_DEVICE Scalar Rv() const
+    OPM_HOST_DEVICE ValueType Rv() const
     {
         if constexpr (!enableDissolution) {
-            return Scalar(0.0);
+            return ValueType{0.0};
         } else {
             return *Rv_;
         }
@@ -518,12 +518,12 @@ public:
      * of liquid water at surface conditions per cubic meter of gas at surface
      * conditions. This method is specific to the black-oil model.
      */
-    OPM_HOST_DEVICE Scalar Rvw() const
+    OPM_HOST_DEVICE ValueType Rvw() const
     {
         if constexpr (enableVapwat) {
             return *Rvw_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
@@ -534,84 +534,84 @@ public:
      * of gas at surface conditions per cubic meter of water at surface
      * conditions. This method is specific to the black-oil model.
      */
-    OPM_HOST_DEVICE Scalar Rsw() const
+    OPM_HOST_DEVICE ValueType Rsw() const
     {
         if constexpr (enableDissolutionInWater) {
             return *Rsw_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
     /*!
      * \brief Return the concentration of salt in water
      */
-    OPM_HOST_DEVICE Scalar saltConcentration() const
+    OPM_HOST_DEVICE ValueType saltConcentration() const
     {
         if constexpr (enableBrine) {
             return *saltConcentration_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
     /*!
      * \brief Return the saturation of solid salt
      */
-    OPM_HOST_DEVICE Scalar saltSaturation() const
+    OPM_HOST_DEVICE ValueType saltSaturation() const
     {
         if constexpr (enableSaltPrecipitation) {
             return *saltSaturation_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
     /*!
      * \brief Return the solvent saturation [-]
      */
-    OPM_HOST_DEVICE Scalar solventSaturation() const
+    OPM_HOST_DEVICE ValueType solventSaturation() const
     {
         if constexpr (enableSolvent) {
             return *solventSaturation_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
     /*!
      * \brief Return the solvent density [kg/m^3]
      */
-    OPM_HOST_DEVICE Scalar solventDensity() const
+    OPM_HOST_DEVICE ValueType solventDensity() const
     {
         if constexpr (enableSolvent) {
             return *solventDensity_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
     /*!
      * \brief Return the solvent inverse formation volume factor [-]
      */
-    OPM_HOST_DEVICE Scalar solventInvB() const
+    OPM_HOST_DEVICE ValueType solventInvB() const
     {
         if constexpr (enableSolvent) {
             return *solventInvB_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
     /*!
      * \brief Return the solvent dissolution factor in water [m^3/m^3]
      */
-    OPM_HOST_DEVICE Scalar rsSolw() const
+    OPM_HOST_DEVICE ValueType rsSolw() const
     {
         if constexpr (enableSolvent) {
             return *rsSolw_;
         } else {
-            return Scalar(0.0);
+            return ValueType{0.0};
         }
     }
 
@@ -625,7 +625,7 @@ public:
     /*!
      * \brief Return the density [kg/m^3] of a given fluid phase.
       */
-    OPM_HOST_DEVICE Scalar density(unsigned phaseIdx) const
+    OPM_HOST_DEVICE ValueType density(unsigned phaseIdx) const
     { return density_[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())]; }
 
     /*!
@@ -634,7 +634,7 @@ public:
      * If the EnableEnergy property is not set to true, this method will throw an
      * exception!
      */
-    OPM_HOST_DEVICE const Scalar& enthalpy(unsigned phaseIdx) const
+    OPM_HOST_DEVICE const ValueType& enthalpy(unsigned phaseIdx) const
     { return (*enthalpy_)[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())]; }
 
     /*!
@@ -643,7 +643,7 @@ public:
      * If the EnableEnergy property is not set to true, this method will throw an
      * exception!
      */
-    OPM_HOST_DEVICE Scalar internalEnergy(unsigned phaseIdx) const
+    OPM_HOST_DEVICE ValueType internalEnergy(unsigned phaseIdx) const
     {   auto energy = (*enthalpy_)[canonicalToStoragePhaseIndex_(phaseIdx, fluidSystem())];
         if(!fluidSystem().enthalpyEqualEnergy()){
             energy -= pressure(phaseIdx)/density(phaseIdx);
@@ -658,7 +658,7 @@ public:
     /*!
      * \brief Return the molar density of a fluid phase [mol/m^3].
      */
-    OPM_HOST_DEVICE Scalar molarDensity(unsigned phaseIdx) const
+    OPM_HOST_DEVICE ValueType molarDensity(unsigned phaseIdx) const
     {
         const auto& rho = density(phaseIdx);
 
@@ -676,19 +676,19 @@ public:
      *
      * This is equivalent to the inverse of the molar density.
      */
-    OPM_HOST_DEVICE Scalar molarVolume(unsigned phaseIdx) const
+    OPM_HOST_DEVICE ValueType molarVolume(unsigned phaseIdx) const
     { return 1.0/molarDensity(phaseIdx); }
 
     /*!
      * \brief Return the dynamic viscosity of a fluid phase [Pa s].
      */
-    OPM_HOST_DEVICE Scalar viscosity(unsigned phaseIdx) const
+    OPM_HOST_DEVICE ValueType viscosity(unsigned phaseIdx) const
     { return fluidSystem().viscosity(*this, phaseIdx, pvtRegionIdx_); }
 
     /*!
      * \brief Return the mass fraction of a component in a fluid phase [-].
      */
-    OPM_HOST_DEVICE Scalar massFraction(unsigned phaseIdx, unsigned compIdx) const
+    OPM_HOST_DEVICE ValueType massFraction(unsigned phaseIdx, unsigned compIdx) const
     {
         switch (phaseIdx) {
         case waterPhaseIdx:
@@ -725,7 +725,7 @@ public:
     /*!
      * \brief Return the mole fraction of a component in a fluid phase [-].
      */
-    OPM_HOST_DEVICE Scalar moleFraction(unsigned phaseIdx, unsigned compIdx) const
+    OPM_HOST_DEVICE ValueType moleFraction(unsigned phaseIdx, unsigned compIdx) const
     {
         switch (phaseIdx) {
         case waterPhaseIdx:
@@ -766,15 +766,15 @@ public:
     /*!
      * \brief Return the partial molar density of a component in a fluid phase [mol / m^3].
      */
-    OPM_HOST_DEVICE Scalar molarity(unsigned phaseIdx, unsigned compIdx) const
+    OPM_HOST_DEVICE ValueType molarity(unsigned phaseIdx, unsigned compIdx) const
     { return moleFraction(phaseIdx, compIdx)*molarDensity(phaseIdx); }
 
     /*!
      * \brief Return the partial molar density of a fluid phase [kg / mol].
      */
-    OPM_HOST_DEVICE Scalar averageMolarMass(unsigned phaseIdx) const
+    OPM_HOST_DEVICE ValueType averageMolarMass(unsigned phaseIdx) const
     {
-        Scalar result(0.0);
+        ValueType result{0.0};
         for (unsigned compIdx = 0; compIdx < numComponents; ++ compIdx)
             result += fluidSystem().molarMass(compIdx, pvtRegionIdx_)*moleFraction(phaseIdx, compIdx);
         return result;
@@ -783,13 +783,13 @@ public:
     /*!
      * \brief Return the fugacity coefficient of a component in a fluid phase [-].
      */
-    OPM_HOST_DEVICE Scalar fugacityCoefficient(unsigned phaseIdx, unsigned compIdx) const
+    OPM_HOST_DEVICE ValueType fugacityCoefficient(unsigned phaseIdx, unsigned compIdx) const
     { return fluidSystem().fugacityCoefficient(*this, phaseIdx, compIdx, pvtRegionIdx_); }
 
     /*!
      * \brief Return the fugacity of a component in a fluid phase [Pa].
      */
-    OPM_HOST_DEVICE Scalar fugacity(unsigned phaseIdx, unsigned compIdx) const
+    OPM_HOST_DEVICE ValueType fugacity(unsigned phaseIdx, unsigned compIdx) const
     {
         return
             fugacityCoefficient(phaseIdx, compIdx)
@@ -843,23 +843,23 @@ private:
             return fluidSystem.canonicalToActivePhaseIdx(canonicalPhaseIdx);
     }
 
-    ConditionalStorage<storeTemperature, Scalar> temperature_{};
-    ConditionalStorage<storeEnthalpy, std::array<Scalar, numStoragePhases> > enthalpy_{};
-    Scalar totalSaturation_{};
-    std::array<Scalar, numStoragePhases> pressure_{};
-    std::array<Scalar, numStoragePhases> saturation_{};
-    std::array<Scalar, numStoragePhases> invB_{};
-    std::array<Scalar, numStoragePhases> density_{};
-    ConditionalStorage<enableDissolution,Scalar> Rs_{};
-    ConditionalStorage<enableDissolution, Scalar> Rv_{};
-    ConditionalStorage<enableVapwat,Scalar> Rvw_{};
-    ConditionalStorage<enableDissolutionInWater,Scalar> Rsw_{};
-    ConditionalStorage<enableBrine, Scalar> saltConcentration_{};
-    ConditionalStorage<enableSaltPrecipitation, Scalar> saltSaturation_{};
-    ConditionalStorage<enableSolvent, Scalar> solventSaturation_{};
-    ConditionalStorage<enableSolvent, Scalar> solventDensity_{};
-    ConditionalStorage<enableSolvent, Scalar> solventInvB_{};
-    ConditionalStorage<enableSolvent, Scalar> rsSolw_{};
+    ConditionalStorage<storeTemperature, ValueType> temperature_{};
+    ConditionalStorage<storeEnthalpy, std::array<ValueType, numStoragePhases> > enthalpy_{};
+    ValueType totalSaturation_{};
+    std::array<ValueType, numStoragePhases> pressure_{};
+    std::array<ValueType, numStoragePhases> saturation_{};
+    std::array<ValueType, numStoragePhases> invB_{};
+    std::array<ValueType, numStoragePhases> density_{};
+    ConditionalStorage<enableDissolution,ValueType> Rs_{};
+    ConditionalStorage<enableDissolution, ValueType> Rv_{};
+    ConditionalStorage<enableVapwat,ValueType> Rvw_{};
+    ConditionalStorage<enableDissolutionInWater,ValueType> Rsw_{};
+    ConditionalStorage<enableBrine, ValueType> saltConcentration_{};
+    ConditionalStorage<enableSaltPrecipitation, ValueType> saltSaturation_{};
+    ConditionalStorage<enableSolvent, ValueType> solventSaturation_{};
+    ConditionalStorage<enableSolvent, ValueType> solventDensity_{};
+    ConditionalStorage<enableSolvent, ValueType> solventInvB_{};
+    ConditionalStorage<enableSolvent, ValueType> rsSolw_{};
 
     unsigned short pvtRegionIdx_{};
 

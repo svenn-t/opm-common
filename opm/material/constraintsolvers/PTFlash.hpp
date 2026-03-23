@@ -378,7 +378,7 @@ public:
         // Declarations
         bool isTrivialL, isTrivialV;
         ComponentVector x, y;
-        typename FlashFluidState::Scalar S_l, S_v;
+        typename FlashFluidState::ValueType S_l, S_v;
         ComponentVector K0 = K;
         ComponentVector K1 = K;
 
@@ -417,7 +417,7 @@ public:
 protected:
 
     template <class FlashFluidState>
-    static typename FlashFluidState::Scalar wilsonK_(const FlashFluidState& fluid_state, int compIdx)
+    static typename FlashFluidState::ValueType wilsonK_(const FlashFluidState& fluid_state, int compIdx)
     {
         const auto& acf = FluidSystem::acentricFactor(compIdx);
         const auto& T_crit = FluidSystem::criticalTemperature(compIdx);
@@ -451,10 +451,10 @@ protected:
 
     template <class FlashFluidState, class ComponentVector>
     static void checkStability_(const FlashFluidState& fluid_state, bool& isTrivial, ComponentVector& K, ComponentVector& xy_loc,
-                                typename FlashFluidState::Scalar& S_loc, const ComponentVector& z, bool isGas, const EOSType& eos_type,
+                                typename FlashFluidState::ValueType& S_loc, const ComponentVector& z, bool isGas, const EOSType& eos_type,
                                 int verbosity)
     {
-        using FlashEval = typename FlashFluidState::Scalar;
+        using FlashEval = typename FlashFluidState::ValueType;
         using CubicEOS = typename Opm::CubicEOS<Scalar, FluidSystem>;
 
         // Declarations
@@ -559,13 +559,13 @@ protected:
 
     // TODO: basically FlashFluidState and ComponentVector are both depending on the one Scalar type
     template <class FlashFluidState, class ComponentVector>
-    static void computeLiquidVapor_(FlashFluidState& fluid_state, typename FlashFluidState::Scalar& L, ComponentVector& K, const ComponentVector& z)
+    static void computeLiquidVapor_(FlashFluidState& fluid_state, typename FlashFluidState::ValueType& L, ComponentVector& K, const ComponentVector& z)
     {
         // Calculate x and y, and normalize
         ComponentVector x;
         ComponentVector y;
-        typename FlashFluidState::Scalar sumx=0;
-        typename FlashFluidState::Scalar sumy=0;
+        typename FlashFluidState::ValueType sumx=0;
+        typename FlashFluidState::ValueType sumy=0;
         for (int compIdx=0; compIdx<numComponents; ++compIdx){
             x[compIdx] = z[compIdx]/(L + (1-L)*K[compIdx]);
             sumx += x[compIdx];
@@ -585,7 +585,7 @@ protected:
     static void flash_2ph(const ComponentVector& z_scalar,
                           const std::string& flash_2p_method,
                           ComponentVector& K_scalar,
-                          typename FluidState::Scalar& L_scalar,
+                          typename FluidState::ValueType& L_scalar,
                           FluidState& fluid_state_scalar,
                           const Scalar flash_tolerance,
                           const EOSType& eos_type,
@@ -624,7 +624,7 @@ protected:
 
     template <class FlashFluidState, class ComponentVector>
     static bool newtonComposition_(ComponentVector& K,
-                                   typename FlashFluidState::Scalar& L,
+                                   typename FlashFluidState::ValueType& L,
                                    FlashFluidState& fluid_state,
                                    const ComponentVector& z,
                                    const Scalar tolerance,
@@ -706,7 +706,7 @@ protected:
                                         fluid_state.saturation(FluidSystem::oilPhaseIdx));
         flash_fluid_state.setTemperature(fluid_state.temperature(0));
 
-        using ParamCache = typename FluidSystem::template ParameterCache<typename CompositionalFluidState<Eval, FluidSystem>::Scalar>;
+        using ParamCache = typename FluidSystem::template ParameterCache<typename CompositionalFluidState<Eval, FluidSystem>::ValueType>;
         ParamCache paramCache(eos_type);
 
         for (unsigned phaseIdx = 0; phaseIdx < numMisciblePhases; ++phaseIdx) {
@@ -855,7 +855,7 @@ protected:
                                            FluidState& fluid_state,
                                            const EOSType& eos_type)
     {
-        using InputEval = typename FluidState::Scalar;
+        using InputEval = typename FluidState::ValueType;
         using ComponentVector = Dune::FieldVector<InputEval, numComponents>;
         ComponentVector z;
         for (unsigned compIdx = 0; compIdx < numComponents; ++compIdx) {
@@ -908,8 +908,8 @@ protected:
         secondary_fluid_state.setLvalue(L);
         // TODO: Do we need to update the saturations?
         // compositions
-        // TODO: we probably can simplify SecondaryFlashFluidState::Scalar
-        using SecondaryParamCache = typename FluidSystem::template ParameterCache<typename SecondaryFlashFluidState::Scalar>;
+        // TODO: we probably can simplify SecondaryFlashFluidState::ValueType
+        using SecondaryParamCache = typename FluidSystem::template ParameterCache<typename SecondaryFlashFluidState::ValueType>;
         SecondaryParamCache secondary_param_cache(eos_type);
         for (unsigned phase_idx = 0; phase_idx < numMisciblePhases; ++phase_idx) {
             secondary_param_cache.updatePhase(secondary_fluid_state, phase_idx);
@@ -958,8 +958,8 @@ protected:
         primary_fluid_state.setPressure(gasPhaseIdx, fluid_state_scalar.pressure(gasPhaseIdx));
         primary_fluid_state.setTemperature(fluid_state_scalar.temperature(0));
 
-        // TODO: is PrimaryFlashFluidState::Scalar> PrimaryEval here?
-        using PrimaryParamCache = typename FluidSystem::template ParameterCache<typename PrimaryFlashFluidState::Scalar>;
+        // TODO: is PrimaryFlashFluidState::ValueType> PrimaryEval here?
+        using PrimaryParamCache = typename FluidSystem::template ParameterCache<typename PrimaryFlashFluidState::ValueType>;
         PrimaryParamCache primary_param_cache(eos_type);
         for (unsigned phase_idx = 0; phase_idx < numMisciblePhases; ++phase_idx) {
             primary_param_cache.updatePhase(primary_fluid_state, phase_idx);
@@ -1088,7 +1088,7 @@ protected:
     static void updateDerivativesSinglePhase_(const FlashFluidStateScalar& fluid_state_scalar,
                                               FluidState& fluid_state)
     {
-        using InputEval = typename FluidState::Scalar;
+        using InputEval = typename FluidState::ValueType;
         // L_eval is converted from a scalar, so all derivatives are zero at this point
         InputEval L_eval = fluid_state_scalar.L();;
 
@@ -1102,7 +1102,7 @@ protected:
     } //end updateDerivativesSinglePhase
 
 
-    // TODO: or use typename FlashFluidState::Scalar
+    // TODO: or use typename FlashFluidState::ValueType
     template <class FlashFluidState, class ComponentVector>
     static bool successiveSubstitutionComposition_(ComponentVector& K,
                                                    typename ComponentVector::field_type& L,
@@ -1137,7 +1137,7 @@ protected:
             computeLiquidVapor_(fluid_state, L, K, z);
 
             // Calculate fugacity coefficient
-            using ParamCache = typename FluidSystem::template ParameterCache<typename FlashFluidState::Scalar>;
+            using ParamCache = typename FluidSystem::template ParameterCache<typename FlashFluidState::ValueType>;
             ParamCache paramCache(eos_type);
             for (int phaseIdx=0; phaseIdx<numMisciblePhases; ++phaseIdx){
                 paramCache.updatePhase(fluid_state, phaseIdx);
