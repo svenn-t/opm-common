@@ -4,8 +4,8 @@ macro(DownloadFmt target)
   if(NOT fmt_POPULATED)
     FetchContent_Declare(fmt
                          DOWNLOAD_EXTRACT_TIMESTAMP ON
-                         URL https://github.com/fmtlib/fmt/archive/refs/tags/10.1.1.tar.gz
-                         URL_HASH SHA512=288c349baac5f96f527d5b1bed0fa5f031aa509b4526560c684281388e91909a280c3262a2474d963b5d1bf7064b1c9930c6677fe54a0d8f86982d063296a54c)
+                         URL https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz
+                         URL_HASH SHA512=47ff6d289dcc22681eea6da465b0348172921e7cafff8fd57a1540d3232cc6b53250a4625c954ee0944c87963b17680ecbc3ea123e43c2c822efe0dc6fa6cef3)
     FetchContent_Populate(fmt)
   endif()
 
