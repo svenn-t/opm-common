@@ -615,6 +615,23 @@ WINJFVT
 /
 WINJFC
 /
+-- fracture filtrate related
+WFCFFVIR
+/
+WFCWFVIR
+/
+WFCFVIR
+/
+WFCFFVIT
+/
+WFCWFVIT
+/
+WFCFVIT
+/
+WWIRFRAC
+/
+WWITFRAC
+/
 
 WGVPR
  W_1 W_2 /
@@ -1075,6 +1092,107 @@ CFCRAD
 CFCAOF
  W_1 /
  W_2 /
+ W_3 /
+/
+-- fracture filtrate connection quantities
+CFCFFVIR
+ W_1 /
+ W_2 /
+ W_3 /
+/
+CFCWFVIR
+ W_1 /
+ W_2 /
+ W_3 /
+/
+CFCFVIR
+ W_1 /
+ W_2 /
+ W_3 /
+/
+CFCFFVIT
+ W_1 /
+ W_2 /
+ W_3 /
+/
+CFCWFVIT
+ W_1 /
+ W_2 /
+ W_3 /
+/
+CFCFVIT
+ W_1 /
+ W_2 /
+ W_3 /
+/
+
+CWIRFRAC
+ W_1 /
+ W_3 /
+/
+
+CWITFRAC
+ W_1 /
+ W_3 /
+/
+
+CFRAREA
+ W_1 /
+ W_3 /
+/
+
+CFRFLUX
+ W_1 /
+ W_3 /
+/
+
+CFRHEIGH
+ W_1 /
+ W_3 /
+/
+
+CFRLENGT
+ W_1 /
+ W_3 /
+/
+
+CFRWI
+ W_1 /
+ W_3 /
+/
+
+CFRVOLUM
+ W_1 /
+ W_3 /
+/
+
+CFRFVOLU
+ W_1 /
+ W_3 /
+/
+
+CFRAVGW
+ W_1 /
+ W_3 /
+/
+
+CFRAVGFW
+ W_1 /
+ W_3 /
+/
+
+CFRINJPR
+ W_1 /
+ W_3 /
+/
+
+CFRINJBH
+ W_1 /
+ W_3 /
+/
+
+CFRINJRA
+ W_1 /
  W_3 /
 /
 
