@@ -1038,5 +1038,356 @@ BOOST_AUTO_TEST_CASE(nnc_collection_opm_lgr_diff)
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_AUTO_TEST_SUITE(FromLGROutputContainers)
+
+// ---------------------------------------------------------------------------
+// Basic structural test: verifies all three container types are routed to
+// the correct store (same-grid vs cross-grid) and keyed by the correct
+// grid index pairs derived from the formula:
+//   outputNnc[i]              → same-grid NNCs for grid i
+//   outputNncGlobalLocal[i]   → cross-grid NNCs between grid 0 and grid i+1
+//   outputAmalgamatedNnc[i][j]→ cross-grid NNCs between grid i+1 and grid i+j+2
+//
+// We populate all three containers and verify:
+//   - the same-grid store has exactly the grids whose entry was non-empty
+//   - the cross-grid store has exactly the expected (g1,g2) key pairs
+//   - entry counts per pair match the input sizes
+//   - spot-check cell indices to confirm no accidental swapping or reordering
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_basic)
+{
+    const std::vector<std::vector<NNCdata>> outputNnc = {
+        { NNCdata(0, 1, 0.5), NNCdata(2, 3, 1.0) },  // grid 0: 2 entries
+        { NNCdata(4, 5, 1.5) }                         // grid 1: 1 entry
+    };
+    const std::vector<std::vector<NNCdata>> outputNncGlobalLocal = {
+        { NNCdata(0, 6, 2.0), NNCdata(1, 7, 2.5) }   // grids 0↔1: 2 entries
+    };
+    const std::vector<std::vector<std::vector<NNCdata>>> outputAmalgamatedNnc = {
+        {
+            { NNCdata(8, 9, 3.0), NNCdata(10, 11, 3.5) },  // grids 1↔2: 2 entries
+            { NNCdata(12, 13, 4.0) }                         // grids 1↔3: 1 entry
+        }
+    };
+
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        outputNnc, outputNncGlobalLocal, outputAmalgamatedNnc);
+
+    // ---- same-grid: exactly 2 grids populated ----------------------------
+    BOOST_REQUIRE_EQUAL(col.same_grid_nnc().size(), 2u);
+    BOOST_REQUIRE(col.hasSameGridNNC(0));
+    BOOST_REQUIRE(col.hasSameGridNNC(1));
+    BOOST_CHECK(!col.hasSameGridNNC(2));  // grid 2 had no same-grid NNCs
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}).input().size(), 2u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}).input().size(), 1u);
+
+    // ---- cross-grid: exactly 3 pairs populated ---------------------------
+    BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 3u);
+    BOOST_REQUIRE(col.hasCrossGridNNC(0, 1));
+    BOOST_REQUIRE(col.hasCrossGridNNC(1, 2));
+    BOOST_REQUIRE(col.hasCrossGridNNC(1, 3));
+    BOOST_CHECK(!col.hasCrossGridNNC(0, 2));
+    BOOST_CHECK(!col.hasCrossGridNNC(0, 3));
+    BOOST_CHECK(!col.hasCrossGridNNC(2, 3));
+
+    // ---- cross-grid entry sizes ------------------------------------------
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input().size(), 2u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{2}).input().size(), 2u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{3}).input().size(), 1u);
+
+    // ---- cell indices routed correctly (spot-check first entry each pair) -
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input()[0].cell1, 0u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input()[0].cell2, 6u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{2}).input()[0].cell1, 8u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{2}).input()[0].cell2, 9u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{3}).input()[0].cell1, 12u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{3}).input()[0].cell2, 13u);
+}
+
+// ---------------------------------------------------------------------------
+// Boundary / degenerate case: passing three empty containers must produce
+// an NNCCollection with both internal stores empty.  This verifies that
+// the factory does not insert any default entries when given no input.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_all_empty)
+{
+    const NNCCollection col = NNCCollection::fromLGROutputContainers({}, {}, {});
+    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_CHECK(col.diff_grid_nnc().empty());
+}
+
+// ---------------------------------------------------------------------------
+// Minimal LGR scenario (one refined grid, no LGR-LGR connections):
+//   - outputNnc provides same-grid NNCs for grid 0 (main) and grid 1 (LGR1)
+//   - outputNncGlobalLocal[0] provides the single global↔LGR1 pair (0,1)
+//   - outputAmalgamatedNnc is empty (no LGR-LGR connections)
+//
+// Verifies that:
+//   - exactly 2 same-grid entries exist (grids 0 and 1)
+//   - exactly 1 cross-grid pair exists, keyed (0,1)
+//   - no spurious LGR-LGR pair (1,2) is created
+//   - the cell indices of the global-local connection are preserved correctly
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_single_lgr_no_amalgamated)
+{
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        { { NNCdata(0, 1, 1.0) }, { NNCdata(2, 3, 2.0) } },
+        { { NNCdata(5, 6, 3.0) } },
+        {});
+
+    // same-grid: 2 grids
+    BOOST_REQUIRE_EQUAL(col.same_grid_nnc().size(), 2u);
+    BOOST_CHECK(col.hasSameGridNNC(0));
+    BOOST_CHECK(col.hasSameGridNNC(1));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}).input().size(), 1u);
+
+    // cross-grid: only (0,1)
+    BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 1u);
+    BOOST_CHECK(col.hasCrossGridNNC(0, 1));
+    BOOST_CHECK(!col.hasCrossGridNNC(1, 2));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input()[0].cell1, 5u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input()[0].cell2, 6u);
+}
+
+// ---------------------------------------------------------------------------
+// Only same-grid NNCs are provided; both cross-grid containers are empty.
+// Verifies that:
+//   - all three grids (0, 1, 2) appear in the same-grid store
+//   - entry counts match the input sizes (1, 1, 2 respectively)
+//   - the cross-grid store remains entirely empty
+// This guards against accidental population of the cross-grid store
+// when only same-grid data is present.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_only_same_grid)
+{
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        {
+            { NNCdata(0, 3, 0.1) },                          // grid 0
+            { NNCdata(1, 2, 0.2) },                          // grid 1
+            { NNCdata(4, 5, 0.3), NNCdata(6, 7, 0.4) }      // grid 2
+        },
+        {}, {});
+
+    BOOST_REQUIRE_EQUAL(col.same_grid_nnc().size(), 3u);
+    BOOST_CHECK(col.hasSameGridNNC(0));
+    BOOST_CHECK(col.hasSameGridNNC(1));
+    BOOST_CHECK(col.hasSameGridNNC(2));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{2}).input().size(), 2u);
+    BOOST_CHECK(col.diff_grid_nnc().empty());
+}
+
+// ---------------------------------------------------------------------------
+// Only global-to-local cross-grid NNCs are provided; outputNnc and
+// outputAmalgamatedNnc are both empty.
+// outputNncGlobalLocal[i] maps to the grid pair (0, i+1), so:
+//   index 0 → pair (0,1) with 1 entry
+//   index 1 → pair (0,2) with 2 entries
+//
+// Verifies that:
+//   - the same-grid store remains empty
+//   - exactly 2 cross-grid pairs are created with the correct (0,i+1) keys
+//   - both entries of the second pair are stored with correct cell indices,
+//     confirming that multi-entry vectors are handled correctly
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_only_global_local)
+{
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        {},
+        {
+            { NNCdata(0, 10, 5.0) },                          // grids 0↔1: 1 entry
+            { NNCdata(1, 11, 6.0), NNCdata(2, 12, 7.0) }     // grids 0↔2: 2 entries
+        },
+        {});
+
+    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 2u);
+
+    BOOST_REQUIRE(col.hasCrossGridNNC(0, 1));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input()[0].cell1, 0u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{1}).input()[0].cell2, 10u);
+
+    BOOST_REQUIRE(col.hasCrossGridNNC(0, 2));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{2}).input().size(), 2u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{2}).input()[0].cell1, 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{2}).input()[0].cell2, 11u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{2}).input()[1].cell1, 2u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}, std::size_t{2}).input()[1].cell2, 12u);
+}
+
+// ---------------------------------------------------------------------------
+// One of the inner vectors in outputNnc is empty (grid 1 has no same-grid
+// NNCs).  Verifies that the factory skips empty vectors and does NOT insert
+// an entry for grid 1, so that:
+//   - grid 0 and grid 2 are present with their correct content
+//   - grid 1 is absent from the same-grid store (empty input → no entry)
+// This documents the expected behaviour: the factory skips empty vectors
+// rather than inserting empty containers for them.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_empty_inner_same_grid)
+{
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        {
+            { NNCdata(0, 1, 1.0) },  // grid 0: 1 entry
+            {},                       // grid 1: empty — will be skipped
+            { NNCdata(2, 3, 2.0) }   // grid 2: 1 entry
+        },
+        {}, {});
+
+    BOOST_REQUIRE(col.hasSameGridNNC(0));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}).input()[0].cell1, 0u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{0}).input()[0].cell2, 1u);
+
+    BOOST_REQUIRE(col.hasSameGridNNC(2));
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{2}).input().size(), 1u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{2}).input()[0].cell1, 2u);
+    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{2}).input()[0].cell2, 3u);
+
+    // Grid 1 had an empty input vector — the factory skips it entirely
+    BOOST_CHECK(!col.hasSameGridNNC(1));
+}
+
+// ---------------------------------------------------------------------------
+// Exhaustive verification of the amalgamated index formula for a 4-LGR case.
+// The formula outputAmalgamatedNnc[i][j] → grids (i+1)↔(i+j+2) produces
+// 6 distinct cross-grid pairs for a fully triangular 4-LGR structure:
+//   [0][0]→(1,2), [0][1]→(1,3), [0][2]→(1,4)
+//   [1][0]→(2,3), [1][1]→(2,4)
+//   [2][0]→(3,4)
+//
+// Each entry uses distinct cell indices so a mis-routing to the wrong pair
+// would be immediately visible.  The test verifies:
+//   - exactly 6 cross-grid pairs are created (no extras, none missing)
+//   - each pair is keyed by the grid indices predicted by the formula
+//   - the cell indices stored in each pair match the corresponding input entry
+//   - no global-local pairs (0,x) are accidentally created
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_amalgamated_index_formula)
+{
+    // [0][0]→1↔2, [0][1]→1↔3, [0][2]→1↔4
+    // [1][0]→2↔3, [1][1]→2↔4
+    // [2][0]→3↔4
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        {}, {},
+        {
+            {
+                { NNCdata(0,  1,  100.0) },  // [0][0] → 1↔2
+                { NNCdata(2,  3,  150.0) },  // [0][1] → 1↔3
+                { NNCdata(4,  5,  400.0) }   // [0][2] → 1↔4
+            },
+            {
+                { NNCdata(6,  7,  200.0) },  // [1][0] → 2↔3
+                { NNCdata(8,  9,  250.0) }   // [1][1] → 2↔4
+            },
+            {
+                { NNCdata(10, 11, 300.0) }   // [2][0] → 3↔4
+            }
+        });
+
+    // Exactly 6 cross-grid pairs, same-grid empty
+    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 6u);
+
+    // Verify each pair exists and holds exactly 1 entry with the expected cells
+    const auto check_pair = [&](std::size_t g1, std::size_t g2,
+                                std::size_t c1, std::size_t c2) {
+        BOOST_REQUIRE(col.hasCrossGridNNC(g1, g2));
+        const auto& e = col.getNNC(g1, g2).input();
+        BOOST_REQUIRE_EQUAL(e.size(), 1u);
+        BOOST_CHECK_EQUAL(e[0].cell1, c1);
+        BOOST_CHECK_EQUAL(e[0].cell2, c2);
+    };
+
+    check_pair(1, 2,  0,  1);
+    check_pair(1, 3,  2,  3);
+    check_pair(1, 4,  4,  5);
+    check_pair(2, 3,  6,  7);
+    check_pair(2, 4,  8,  9);
+    check_pair(3, 4, 10, 11);
+
+    // No spurious pairs
+    BOOST_CHECK(!col.hasCrossGridNNC(0, 1));
+    BOOST_CHECK(!col.hasCrossGridNNC(0, 2));
+}
+
+// ---------------------------------------------------------------------------
+// NNCDataContainerDiffGrid must preserve insertion order and must NOT sort
+// or swap cell indices (unlike NNCDataContainer which enforces cell1<=cell2).
+// We insert two entries with cell1 > cell2 and verify that:
+//   - both entries are stored in insertion order
+//   - cell1 and cell2 are not swapped to enforce cell1 <= cell2
+// This is important because for cross-grid NNCs the meaning of cell1 and
+// cell2 is positional (e.g. LGR cell vs global cell) and swapping would
+// corrupt that association.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_insertion_order_preserved)
+{
+    // Insert with cell1 > cell2 to distinguish from sorted order
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        {}, { { NNCdata(9, 3, 1.0), NNCdata(2, 7, 2.0) } }, {});
+
+    BOOST_REQUIRE(col.hasCrossGridNNC(0, 1));
+    const auto& e = col.getNNC(std::size_t{0}, std::size_t{1}).input();
+    BOOST_REQUIRE_EQUAL(e.size(), 2u);
+    // First entry must be (9,3), not (3,9) — order preserved
+    BOOST_CHECK_EQUAL(e[0].cell1, 9u);
+    BOOST_CHECK_EQUAL(e[0].cell2, 3u);
+    BOOST_CHECK_EQUAL(e[1].cell1, 2u);
+    BOOST_CHECK_EQUAL(e[1].cell2, 7u);
+}
+
+// ---------------------------------------------------------------------------
+// Three LGRs connected only by LGR-LGR (amalgamated) NNCs.
+// outputAmalgamatedNnc produces pairs:
+//   [0][0]→(1,2), [0][1]→(1,3), [1][0]→(2,3)
+//
+// Verifies that:
+//   - the same-grid store is empty (no outputNnc provided)
+//   - exactly 3 cross-grid pairs are created with the correct keys
+//   - no global-local pairs (0,x) are created
+//   - cell1 of each entry matches the first cell of the corresponding input,
+//     confirming correct routing between the three pairs
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(from_lgr_output_containers_multi_lgr_amalgamated)
+{
+    const NNCCollection col = NNCCollection::fromLGROutputContainers(
+        {}, {},
+        {
+            { { NNCdata(0, 1, 10.0) }, { NNCdata(2, 3, 20.0) } },  // [0][*]
+            { { NNCdata(4, 5, 30.0) } }                              // [1][*]
+        });
+
+    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 3u);
+
+    BOOST_CHECK(col.hasCrossGridNNC(1, 2));
+    BOOST_CHECK(col.hasCrossGridNNC(1, 3));
+    BOOST_CHECK(col.hasCrossGridNNC(2, 3));
+    BOOST_CHECK(!col.hasCrossGridNNC(0, 1));
+    BOOST_CHECK(!col.hasCrossGridNNC(0, 2));
+
+    const auto& nnc_12 = col.getNNC(std::size_t{1}, std::size_t{2});
+    BOOST_REQUIRE_EQUAL(nnc_12.input().size(), 1u);
+    BOOST_CHECK_EQUAL(nnc_12.input()[0].cell1, 0u);
+    BOOST_CHECK_EQUAL(nnc_12.input()[0].cell2, 1u);
+
+    const auto& nnc_13 = col.getNNC(std::size_t{1}, std::size_t{3});
+    BOOST_REQUIRE_EQUAL(nnc_13.input().size(), 1u);
+    BOOST_CHECK_EQUAL(nnc_13.input()[0].cell1, 2u);
+    BOOST_CHECK_EQUAL(nnc_13.input()[0].cell2, 3u);
+
+    const auto& nnc_23 = col.getNNC(std::size_t{2}, std::size_t{3});
+    BOOST_REQUIRE_EQUAL(nnc_23.input().size(), 1u);
+    BOOST_CHECK_EQUAL(nnc_23.input()[0].cell1, 4u);
+    BOOST_CHECK_EQUAL(nnc_23.input()[0].cell2, 5u);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

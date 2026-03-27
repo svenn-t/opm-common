@@ -548,4 +548,61 @@ const NNCDataContainer& NNCCollection::getGlobalNNC() const
     return getNNC(std::size_t{0});
 }
 
+/// Builds an NNCCollection from the three output containers produced by
+/// EclGenericWriter::exportNncStructure_().
+///
+/// Index convention (matches the layout written by exportNncStructure_):
+///
+///   outputNnc[level]
+///     → same-grid NNCs for grid \p level (0 = main grid).
+///
+///   outputNncGlobalLocal[i]
+///     → cross-grid NNCs between main grid (level 0) and level i+1.
+///
+///   outputAmalgamatedNnc[i][j]
+///     → cross-grid NNCs between level i+1 and level i+j+2.
+NNCCollection NNCCollection::fromLGROutputContainers(
+    const std::vector<std::vector<NNCdata>>& outputNnc,
+    const std::vector<std::vector<NNCdata>>& outputNncGlobalLocal,
+    const std::vector<std::vector<std::vector<NNCdata>>>& outputAmalgamatedNnc)
+{
+    NNCCollection result;
+
+    // --- same-grid NNCs ---------------------------------------------------
+    for (std::size_t level = 0; level < outputNnc.size(); ++level) {
+        if (outputNnc[level].empty())
+            continue;
+        NNCDataContainer container;
+        for (const auto& nnc : outputNnc[level])
+            container.addNNC(nnc.cell1, nnc.cell2, nnc.trans);
+        result.addNNC(level, std::move(container));
+    }
+
+    // --- global-to-local NNCs (level 0  <->  level i+1) ------------------
+    for (std::size_t i = 0; i < outputNncGlobalLocal.size(); ++i) {
+        if (outputNncGlobalLocal[i].empty())
+            continue;
+        NNCDataContainerDiffGrid container;
+        for (const auto& nnc : outputNncGlobalLocal[i])
+            container.addNNC(nnc.cell1, nnc.cell2, nnc.trans);
+        result.addNNC(std::size_t{0}, i + 1, std::move(container));
+    }
+
+    // --- amalgamated NNCs (level i+1  <->  level i+j+2) ------------------
+    for (std::size_t i = 0; i < outputAmalgamatedNnc.size(); ++i) {
+        const std::size_t smallerLevel = i + 1;
+        for (std::size_t j = 0; j < outputAmalgamatedNnc[i].size(); ++j) {
+            if (outputAmalgamatedNnc[i][j].empty())
+                continue;
+            const std::size_t largerLevel = smallerLevel + j + 1;
+            NNCDataContainerDiffGrid container;
+            for (const auto& nnc : outputAmalgamatedNnc[i][j])
+                container.addNNC(nnc.cell1, nnc.cell2, nnc.trans);
+            result.addNNC(smallerLevel, largerLevel, std::move(container));
+        }
+    }
+
+    return result;
+}
+
 } // namespace Opm
