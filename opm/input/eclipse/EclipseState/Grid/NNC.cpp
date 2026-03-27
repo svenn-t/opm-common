@@ -565,7 +565,7 @@ NNCCollection NNCCollection::fromLGROutputContainers(
             continue;
         NNCDataContainer container;
         for (const auto& nnc : outputNnc[level])
-            container.addNNC(nnc);
+            container.addNNC(nnc.cell1, nnc.cell2, nnc.trans);
         result.addNNC(level, std::move(container));
     }
 
