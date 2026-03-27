@@ -374,6 +374,7 @@ list(APPEND MAIN_SOURCE_FILES
   opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityBrinePvt.cpp
   opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityOilPvt.cpp
   opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityWaterPvt.cpp
+  opm/material/fluidsystems/blackoilpvt/ConstantRsDeadOilPvt.cpp
   opm/material/fluidsystems/blackoilpvt/DeadOilPvt.cpp
   opm/material/fluidsystems/blackoilpvt/DryGasPvt.cpp
   opm/material/fluidsystems/blackoilpvt/DryHumidGasPvt.cpp
@@ -1441,6 +1442,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityBrinePvt.hpp
   opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityOilPvt.hpp
   opm/material/fluidsystems/blackoilpvt/ConstantCompressibilityWaterPvt.hpp
+  opm/material/fluidsystems/blackoilpvt/ConstantRsDeadOilPvt.hpp
   opm/material/fluidsystems/blackoilpvt/DeadOilPvt.hpp
   opm/material/fluidsystems/blackoilpvt/DryGasPvt.hpp
   opm/material/fluidsystems/blackoilpvt/DryHumidGasPvt.hpp

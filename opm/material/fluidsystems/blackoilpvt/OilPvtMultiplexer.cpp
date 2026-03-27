@@ -27,6 +27,8 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Runspec.hpp>
 
+#include <stdexcept>
+
 namespace Opm {
 
 template <class Scalar, bool enableThermal>
@@ -58,6 +60,10 @@ OilPvtMultiplexer<Scalar,enableThermal>::
         delete &getRealPvt<OilPvtApproach::BrineH2>();
         break;
     }
+    case OilPvtApproach::ConstantRsDeadOil: {
+        delete &getRealPvt<OilPvtApproach::ConstantRsDeadOil>();
+        break;
+    }
     case OilPvtApproach::NoOil:
         break;
     }
@@ -80,6 +86,16 @@ initFromState(const EclipseState& eclState, const Schedule& schedule)
         setApproach(OilPvtApproach::ThermalOil);
     else if (!eclState.getTableManager().getPvcdoTable().empty())
         setApproach(OilPvtApproach::ConstantCompressibilityOil);
+    else if (eclState.getTableManager().hasTables("RSCONST")
+             && !eclState.getTableManager().getRsconstTables().empty()) {
+        if (eclState.runspec().phases().active(Phase::GAS)
+            || eclState.getSimulationConfig().hasDISGAS())
+        {
+            throw std::invalid_argument(
+                "RSCONST requires dead-oil mode with GAS and DISGAS disabled.");
+        }
+        setApproach(OilPvtApproach::ConstantRsDeadOil);
+    }
     else if (eclState.getTableManager().hasTables("PVDO"))
         setApproach(OilPvtApproach::DeadOil);
     else if (!eclState.getTableManager().getPvtoTables().empty())
@@ -145,6 +161,10 @@ setApproach(OilPvtApproach appr)
         realOilPvt_ = new BrineH2Pvt<Scalar>;
         break;
 
+    case OilPvtApproach::ConstantRsDeadOil:
+        realOilPvt_ = new ConstantRsDeadOilPvt<Scalar>;
+        break;
+
     case OilPvtApproach::NoOil:
         throw std::logic_error("Not implemented: Oil PVT of this deck!");
     }
@@ -176,6 +196,9 @@ operator=(const OilPvtMultiplexer<Scalar,enableThermal>& data)
         break;
     case OilPvtApproach::BrineH2:
         realOilPvt_ = new BrineH2Pvt<Scalar>(*static_cast<const BrineH2Pvt<Scalar>*>(data.realOilPvt_));
+        break;
+    case OilPvtApproach::ConstantRsDeadOil:
+        realOilPvt_ = new ConstantRsDeadOilPvt<Scalar>(*static_cast<const ConstantRsDeadOilPvt<Scalar>*>(data.realOilPvt_));
         break;
     default:
         break;

@@ -53,6 +53,7 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/Python/Python.hpp>
 #include <opm/input/eclipse/Schedule/Schedule.hpp>
+#include <opm/input/eclipse/Units/Units.hpp>
 
 #include <tuple>
 
@@ -133,6 +134,48 @@ static constexpr const char* deckString1 =
     "              1.1e-3       2.25    2.015 /\n"
     "/\n"
     "\n";
+
+static Opm::Deck makeRSCONSTDeck(const std::string& rsconstRecord,
+                                 const std::string& extraRunspec = "")
+{
+    return Opm::Parser{}.parseString(
+        "RUNSPEC\n"
+        "DIMENS\n"
+        "  1 1 1 /\n"
+        "TABDIMS\n"
+        "  1 /\n"
+        "OIL\n"
+        "WATER\n"
+        + extraRunspec +
+        "METRIC\n"
+        "GRID\n"
+        "DX\n"
+        "  100 /\n"
+        "DY\n"
+        "  100 /\n"
+        "DZ\n"
+        "  10 /\n"
+        "TOPS\n"
+        "  1000 /\n"
+        "PORO\n"
+        "  0.2 /\n"
+        "PERMX\n"
+        "  100 /\n"
+        "PERMY\n"
+        "  100 /\n"
+        "PERMZ\n"
+        "  20 /\n"
+        "PROPS\n"
+        "DENSITY\n"
+        "  800 1000 1 /\n"
+        "PVDO\n"
+        "  100 1.1 2\n"
+        "  200 1.0 2 /\n"
+        "RSCONST\n"
+        "  " + rsconstRecord + " /\n"
+        "SCHEDULE\n"
+        "END\n");
+}
 
 template <class Evaluation, class OilPvt, class GasPvt, class WaterPvt>
 void ensurePvtApi(const OilPvt& oilPvt, const GasPvt& gasPvt, const WaterPvt& waterPvt)
@@ -286,6 +329,81 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ConstantCompressibilityWater, Scalar, Types)
     BOOST_CHECK_MESSAGE(std::abs(tmp - refTmp) <= tolerance,
                         "The reference water viscosity at region 1 is supposed to be " <<
                         refTmp << ". (is " << tmp << ")");
+}
+
+BOOST_AUTO_TEST_CASE(RSCONST_RequiresDeadOilMode)
+{
+    const auto deck2 = makeRSCONSTDeck("0.37 101.5", "GAS\nDISGAS\n");
+    const Opm::EclipseState eclState2(deck2);
+    const Opm::Schedule schedule2(deck2, eclState2, std::make_shared<Opm::Python>());
+
+    Opm::OilPvtMultiplexer<double> oilPvt;
+    BOOST_CHECK_THROW(oilPvt.initFromState(eclState2, schedule2), std::invalid_argument);
+}
+
+BOOST_AUTO_TEST_CASE(RSCONST_UsesConstantRsAcrossPressure)
+{
+    const auto deck2 = makeRSCONSTDeck("0.37 101.5");
+    const Opm::EclipseState eclState2(deck2);
+    const Opm::Schedule schedule2(deck2, eclState2, std::make_shared<Opm::Python>());
+
+    Opm::OilPvtMultiplexer<double> oilPvt;
+    oilPvt.initFromState(eclState2, schedule2);
+
+    // Bubble point is 101.5 barsa = 101.5e5 Pa, so use pressures above this
+    const auto rsAtBubble = oilPvt.saturatedGasDissolutionFactor(0, 300.0, 101.5e5);
+    const auto rsHighP = oilPvt.saturatedGasDissolutionFactor(0, 300.0, 5.0e7);
+
+    BOOST_CHECK_CLOSE(rsAtBubble, 0.37, 1e-12);
+    BOOST_CHECK_CLOSE(rsHighP, 0.37, 1e-12);
+}
+
+BOOST_AUTO_TEST_CASE(RSCONST_BubblePointMappedToSaturationPressure)
+{
+    const auto deck2 = makeRSCONSTDeck("0.37 101.5");
+    const Opm::EclipseState eclState2(deck2);
+    const Opm::Schedule schedule2(deck2, eclState2, std::make_shared<Opm::Python>());
+
+    Opm::OilPvtMultiplexer<double> oilPvt;
+    oilPvt.initFromState(eclState2, schedule2);
+
+    const auto pb1 = oilPvt.saturationPressure(0, 300.0, 0.1);
+    const auto pb2 = oilPvt.saturationPressure(0, 300.0, 0.6);
+
+    BOOST_CHECK_CLOSE(pb1, 101.5 * Opm::unit::barsa, 1e-8);
+    BOOST_CHECK_CLOSE(pb2, 101.5 * Opm::unit::barsa, 1e-8);
+}
+
+BOOST_AUTO_TEST_CASE(RSCONST_ThrowsBelowBubblePoint)
+{
+    const auto deck2 = makeRSCONSTDeck("0.37 101.5");
+    const Opm::EclipseState eclState2(deck2);
+    const Opm::Schedule schedule2(deck2, eclState2, std::make_shared<Opm::Python>());
+
+    Opm::OilPvtMultiplexer<double> oilPvt;
+    oilPvt.initFromState(eclState2, schedule2);
+
+    // Bubble point from RSCONST: 101.5 barsa = 101.5e5 Pa = 10.15 MPa
+    const double bubblePointPa = 101.5e5;
+
+    // Test 1: pressure BELOW bubble point should throw NumericalProblem
+    const double pressureBelowPb = 50e5;  // 50 barsa < 101.5 barsa
+    BOOST_CHECK_THROW(
+        oilPvt.saturatedGasDissolutionFactor(0, 300.0, pressureBelowPb),
+        Opm::NumericalProblem
+    );
+
+    // Test 2: pressure AT bubble point should NOT throw
+    const double pressureAtPb = bubblePointPa;
+    BOOST_CHECK_NO_THROW(
+        oilPvt.saturatedGasDissolutionFactor(0, 300.0, pressureAtPb)
+    );
+
+    // Test 3: pressure ABOVE bubble point should NOT throw
+    const double pressureAbovePb = 200e5;  // 200 barsa > 101.5 barsa
+    BOOST_CHECK_NO_THROW(
+        oilPvt.saturatedGasDissolutionFactor(0, 300.0, pressureAbovePb)
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
