@@ -1374,12 +1374,20 @@ BOOST_AUTO_TEST_CASE(from_lgr_output_containers_multi_lgr_amalgamated)
     BOOST_CHECK(!col.hasCrossGridNNC(0, 1));
     BOOST_CHECK(!col.hasCrossGridNNC(0, 2));
 
-    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{2}).input()[0].cell1, 0u);
-    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{2}).input()[0].cell2, 1u);
-    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{3}).input()[0].cell1, 2u);
-    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{1}, std::size_t{3}).input()[0].cell2, 3u);
-    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{2}, std::size_t{3}).input()[0].cell1, 4u);
-    BOOST_CHECK_EQUAL(col.getNNC(std::size_t{2}, std::size_t{3}).input()[0].cell2, 5u);
+    const auto& nnc_12 = col.getNNC(std::size_t{1}, std::size_t{2});
+    BOOST_REQUIRE_EQUAL(nnc_12.input().size(), 1u);
+    BOOST_CHECK_EQUAL(nnc_12.input()[0].cell1, 0u);
+    BOOST_CHECK_EQUAL(nnc_12.input()[0].cell2, 1u);
+
+    const auto& nnc_13 = col.getNNC(std::size_t{1}, std::size_t{3});
+    BOOST_REQUIRE_EQUAL(nnc_13.input().size(), 1u);
+    BOOST_CHECK_EQUAL(nnc_13.input()[0].cell1, 2u);
+    BOOST_CHECK_EQUAL(nnc_13.input()[0].cell2, 3u);
+
+    const auto& nnc_23 = col.getNNC(std::size_t{2}, std::size_t{3});
+    BOOST_REQUIRE_EQUAL(nnc_23.input().size(), 1u);
+    BOOST_CHECK_EQUAL(nnc_23.input()[0].cell1, 4u);
+    BOOST_CHECK_EQUAL(nnc_23.input()[0].cell2, 5u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
