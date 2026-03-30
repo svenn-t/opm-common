@@ -1049,6 +1049,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/input/eclipse/EclipseState/Tables/Rock2dtrTable.hpp
   opm/input/eclipse/EclipseState/Tables/RocktabTable.hpp
   opm/input/eclipse/EclipseState/Tables/RockwnodTable.hpp
+  opm/input/eclipse/EclipseState/Tables/RsconstTable.hpp
   opm/input/eclipse/EclipseState/Tables/RsvdTable.hpp
   opm/input/eclipse/EclipseState/Tables/RtempvdTable.hpp
   opm/input/eclipse/EclipseState/Tables/RvvdTable.hpp
