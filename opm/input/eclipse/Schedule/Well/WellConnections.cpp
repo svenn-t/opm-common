@@ -62,8 +62,10 @@
 #include <limits>
 #include <numbers>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -133,6 +135,48 @@ namespace {
                   extent[ p[2] ] }};
     }
 
+    void diagnoseZeroPermConnectionSkipped(const Opm::KeywordLocation&      location,
+                                           std::string_view                 wname,
+                                           std::span<const int, 3>          ijk_1based,
+                                           std::span<const double, 3>       perm,
+                                           const Opm::Connection::Direction direction,
+                                           const Opm::ParseContext&         parseContext,
+                                           Opm::ErrorGuard&                 errors)
+    {
+        constexpr auto dirs = std::array {
+            Opm::Connection::Direction::X,
+            Opm::Connection::Direction::Y,
+            Opm::Connection::Direction::Z,
+        };
+
+        const auto dirIdx = directionIndices(direction);
+
+        const auto toMD = [&perm](const std::size_t i)
+        {
+            constexpr auto md = Opm::prefix::milli*Opm::unit::darcy;
+
+            // 'perm' is already permuted according to 'direction', so index directly.
+            return Opm::unit::convert::to(perm[i], md);
+        };
+
+        const auto dirStr = [&dirs, &dirIdx](const std::size_t i)
+        {
+            return Opm::Connection::Direction2String(dirs[dirIdx[i]]);
+        };
+
+        const auto msg_fmt = fmt::format(R"(Problem with keyword {{keyword}}
+In {{file}} line {{line}}
+Connection ({},{},{}) (direction '{}') for well {} ignored because
+   PERM{}={:.3e} mD and PERM{}={:.3e} mD.)",
+                                         ijk_1based[0], ijk_1based[1], ijk_1based[2],
+                                         dirStr(2), wname,
+                                         dirStr(0), toMD(0),
+                                         dirStr(1), toMD(1));
+
+        parseContext.handleError(Opm::ParseContext::SCHEDULE_COMPDAT_ZERO_PERM,
+                                 msg_fmt, location, errors);
+    }
+
     // Compute Peaceman's effective radius of single completion.
     double effectiveRadius(const std::array<double,3>& K,
                            const std::array<double,3>& D)
@@ -168,6 +212,14 @@ namespace {
                                         const double                          porosity,
                                         const Opm::WDFAC&                     wdfac)
     {
+        if (const auto valid_input = (ctf_props.Ke > 0.0) &&
+            (ctf_props.connection_length * ctf_props.rw > 0.0);
+            ! valid_input)
+        {
+            // Not valid input--e.g., Ke=0 or connection_length=0.
+            return 0.0;
+        }
+
         // Reference/background permeability against which to scale cell
         // permeability for model evaluation.
         constexpr auto Kref = 1.0*Opm::prefix::milli*Opm::unit::darcy;
@@ -377,8 +429,8 @@ namespace Opm {
                                        const ScheduleGrid&               grid,
                                        const KeywordLocation&            location,
                                        const std::optional<std::string>& lgr_label,
-                                       [[maybe_unused]] const ParseContext& parseContext,
-                                       [[maybe_unused]] ErrorGuard&         errors)
+                                       const ParseContext&               parseContext,
+                                       ErrorGuard&                       errors)
     {
         const auto& itemI = record.getItem("I");
         const auto defaulted_I = itemI.defaultApplied(0) || (itemI.get<int>(0) == 0);
@@ -468,6 +520,12 @@ The cell ({},{},{}) in well {} is not active and the connection will be ignored)
 
             const auto D = effectiveExtent(direction, props->ntg, cell.dimensions);
             const auto K = permComponents(direction, { props->permx, props->permy, props->permz });
+
+            // Note: we could *arguably* skip the connection entirely if
+            // Ke=0, but that's a little presumptuous if both CF and Kh are
+            // provided as input values.  We'll nevertheless skip the
+            // connection if Ke=0 and we actually need to compute r0 from
+            // K[0] and K[1].
             ctf_props.Ke = std::sqrt(K[0] * K[1]);
 
             const auto ctf_kind = (ctf_props.CF < 0.0)
@@ -484,7 +542,16 @@ The cell ({},{},{}) in well {} is not active and the connection will be ignored)
             // We must calculate CF and Kh from the items in the COMPDAT
             // record and cell properties.
             if (ctf_props.r0 < 0.0) {
-                ctf_props.r0 = effectiveRadius(K, D);
+                if ((K[0] > 0.0) && (K[1] > 0.0)) {
+                    ctf_props.r0 = effectiveRadius(K, D);
+                }
+                else {
+                    // Zero permeability cell.  No connection.
+                    diagnoseZeroPermConnectionSkipped(location, wname,
+                                                      std::array {I + 1, J + 1, k + 1},
+                                                      K, direction, parseContext, errors);
+                    continue;
+                }
             }
 
             if (const auto peaceman_denom = peacemanDenominator(ctf_props);
@@ -528,7 +595,20 @@ The cell ({},{},{}) in well {} is not active and the connection will be ignored)
             }
 
             // Length of the well perforation interval.
-            ctf_props.connection_length = ctf_props.Kh / ctf_props.Ke;
+            //
+            // Note: Zero if Ke=0, as that's (most) compatible with the
+            // definition
+            //
+            //    Kh = Ke * D[2]
+            //
+            // when neither CF nor Kh are defined in the input (or for the
+            // special case COMPDAT(10)=0).  This is also the most
+            // reasonable definition for the Forchheimer D-factor
+            // correlation calculation as a zero effective permeability or
+            // connection length should give a zero-valued D-factor.
+            ctf_props.connection_length = (ctf_props.Ke > 0.0)
+                ? ctf_props.Kh / ctf_props.Ke
+                : 0.0;
 
             // Area equivalent radius of the grid block.  Used by the
             // PolymerMW module.
