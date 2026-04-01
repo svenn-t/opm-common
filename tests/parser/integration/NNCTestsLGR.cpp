@@ -484,9 +484,14 @@ BOOST_AUTO_TEST_CASE(check_reference_is_mutable)
 
 BOOST_AUTO_TEST_CASE(check_duplicate_entries)
 {
+    // Grid 0 is special: addNNC replaces it rather than throwing.
+    // Grids > 0 retain the duplicate-throw behaviour.
     NNCCollection col;
     col.addNNC(std::size_t{0}, make_nnc(1, 2, 1.0));
-    BOOST_CHECK_THROW(col.addNNC(std::size_t{0}, make_nnc(3, 4, 2.0)),
+    BOOST_CHECK_NO_THROW(col.addNNC(std::size_t{0}, make_nnc(3, 4, 2.0)));
+
+    col.addNNC(std::size_t{1}, make_nnc(1, 2, 1.0));
+    BOOST_CHECK_THROW(col.addNNC(std::size_t{1}, make_nnc(3, 4, 2.0)),
                       std::runtime_error);
 }
 
@@ -498,8 +503,10 @@ BOOST_AUTO_TEST_CASE(invalid_entry)
 
 BOOST_AUTO_TEST_CASE(check_absent_el)
 {
+    // Grid 0 always exists in the map; grids > 0 are absent until added.
     NNCCollection col;
-    BOOST_CHECK(!col.hasSameGridNNC(std::size_t{0}));
+    BOOST_CHECK(col.hasSameGridNNC(std::size_t{0}));
+    BOOST_CHECK(!col.hasSameGridNNC(std::size_t{1}));
 }
 
 BOOST_AUTO_TEST_CASE(check_if_inserted_el_exists)
@@ -545,10 +552,14 @@ BOOST_AUTO_TEST_CASE(chexk_if_reference_is_mutable)
     BOOST_CHECK_EQUAL(col.getGlobalNNC().input().size(), 2u);
 }
 
-BOOST_AUTO_TEST_CASE(check_missing_global)
+BOOST_AUTO_TEST_CASE(get_global_empty_when_no_nnc_added)
 {
+    // Grid 0 always exists; getGlobalNNC() never throws.
+    // hasGlobalNNC() is false until NNC data is explicitly added.
     NNCCollection col;
-    BOOST_CHECK_THROW(col.getGlobalNNC(), std::runtime_error);
+    BOOST_CHECK(!col.hasGlobalNNC());
+    BOOST_CHECK_NO_THROW(col.getGlobalNNC());
+    BOOST_CHECK(col.getGlobalNNC().input().empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -676,10 +687,13 @@ BOOST_AUTO_TEST_CASE(diff_grid_map_contains_added_entries)
     BOOST_CHECK(m.at({2, 3}) == n23);
 }
 
-BOOST_AUTO_TEST_CASE(empty_collection_has_empty_maps)
+BOOST_AUTO_TEST_CASE(empty_collection_has_no_data)
 {
+    // Grid 0 is always present in same_grid_nnc() but holds no data.
     NNCCollection col;
-    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_CHECK(col.empty());
+    BOOST_CHECK_EQUAL(col.same_grid_nnc().size(), 1u);
+    BOOST_CHECK(col.same_grid_nnc().at(0).input().empty());
     BOOST_CHECK(col.diff_grid_nnc().empty());
 }
 
@@ -690,10 +704,12 @@ BOOST_AUTO_TEST_SUITE(StoreIsolation)
 
 BOOST_AUTO_TEST_CASE(cross_grid_add_does_not_affect_same_grid)
 {
+    // Adding a cross-grid NNC must not populate the global same-grid container.
     NNCCollection col;
     col.addNNC(std::size_t{0}, std::size_t{1}, make_nnc_diffgrid(5, 6, 3.0));
 
-    BOOST_CHECK_THROW(col.getNNC(std::size_t{0}), std::runtime_error);
+    BOOST_CHECK(col.getNNC(std::size_t{0}).input().empty());
+    BOOST_CHECK(!col.hasGlobalNNC());
 }
 
 BOOST_AUTO_TEST_CASE(same_grid_add_does_not_affect_cross_grid)
@@ -793,13 +809,12 @@ BOOST_AUTO_TEST_CASE(local_global_insertion_normalises_to_same_output)
     const auto& egrid = es.getInputGrid();
 
     NNCCollection col;
-    col.addNNC(NNCDataContainer{});
+    // No global same-grid NNC: only a cross-grid connection exists.
 
     NNCDataContainerDiffGrid cross;
     cross.addNNC(5, 2, 100.0);  // cell1=5=LGR cell, cell2=2=global cell
     // addNNC(grid1=1=LGR, grid2=0=global): grid indices normalise to (0,1),
-    // cells are NOT swapped → cell1 stays associated with grid1 (LGR),
-    // cell2 stays associated with grid2 (global).
+    // cells are swapped so cell1 becomes the global cell and cell2 the LGR cell.
     col.addNNC(std::size_t{1}, std::size_t{0}, cross);
 
     Opm::UnitSystem units(Opm::UnitSystem::UnitType::UNIT_TYPE_FIELD);
@@ -807,6 +822,10 @@ BOOST_AUTO_TEST_CASE(local_global_insertion_normalises_to_same_output)
 
     Opm::EclIO::EclFile f("cross_lg.FEGRID",
                            Opm::EclIO::EclFile::Formatted{true});
+
+    // No same-grid NNCs → NNC1/NNC2 must not appear
+    BOOST_CHECK(!f.hasKey("NNC1"));
+    BOOST_CHECK(!f.hasKey("NNC2"));
 
     BOOST_REQUIRE(f.hasKey("NNCL"));
     BOOST_REQUIRE(f.hasKey("NNCG"));
@@ -817,10 +836,61 @@ BOOST_AUTO_TEST_CASE(local_global_insertion_normalises_to_same_output)
     BOOST_REQUIRE_EQUAL(nncl.size(), 1u);
     BOOST_REQUIRE_EQUAL(nncg.size(), 1u);
 
-    // NNCL = cell1+1 = LGR cell 5 → 6
-    // NNCG = cell2+1 = global cell 2 → 3
+    // NNCL = cell2+1 = LGR cell 5 → 6  (after swap_adj: stored as cell2)
+    // NNCG = cell1+1 = global cell 2 → 3  (after swap_adj: stored as cell1)
     BOOST_CHECK_EQUAL(nncl[0], 6);
     BOOST_CHECK_EQUAL(nncg[0], 3);
+}
+
+
+BOOST_AUTO_TEST_CASE(no_global_nnc_with_cross_grid_nnc)
+{
+    // Regression test: NNCCollection must not require a global same-grid NNC
+    // to be present when cross-grid (Global ↔ LGR) NNCs exist.
+    auto deck = Opm::Parser{}.parseString(opm_lgr_nnc_test);
+    EclipseState es(deck);
+    const auto& egrid = es.getInputGrid();
+
+    NNCCollection col;
+    // Deliberately add NO global same-grid NNC.
+
+    NNCDataContainerDiffGrid cross;
+    cross.addNNC(0, 0, 1.5);  // LGR cell 0 ↔ global cell 0
+    cross.addNNC(1, 1, 2.5);  // LGR cell 1 ↔ global cell 1
+    col.addNNC(std::size_t{1}, std::size_t{0}, cross);
+
+    BOOST_CHECK(!col.hasGlobalNNC());
+    BOOST_CHECK(col.hasCrossGridNNC(0, 1));
+
+    Opm::UnitSystem units(Opm::UnitSystem::UnitType::UNIT_TYPE_FIELD);
+
+    // Must not throw even though no global same-grid NNC exists.
+    BOOST_REQUIRE_NO_THROW(egrid.save("opm-test.FEGRID", true, col, units));
+
+    Opm::EclIO::EclFile f("opm-test.FEGRID",
+                           Opm::EclIO::EclFile::Formatted{true});
+
+    // No same-grid NNCs for any grid.
+    BOOST_CHECK(!f.hasKey("NNC1"));
+    BOOST_CHECK(!f.hasKey("NNC2"));
+
+    // Cross-grid section must be present and correct.
+    BOOST_REQUIRE(f.hasKey("NNCL"));
+    BOOST_REQUIRE(f.hasKey("NNCG"));
+
+    const auto nncl = f.get<int>("NNCL");
+    const auto nncg = f.get<int>("NNCG");
+
+    BOOST_REQUIRE_EQUAL(nncl.size(), 2u);
+    BOOST_REQUIRE_EQUAL(nncg.size(), 2u);
+
+    // addNNC(grid1=1, grid2=0) triggers swap_adj: cell1 ↔ cell2 in each entry.
+    // Stored: (cell1=global, cell2=LGR).
+    // save_nnc_local_global: NNCG=cell1+1 (global), NNCL=cell2+1 (LGR).
+    BOOST_CHECK_EQUAL(nncg[0], 1);  // global cell 0 → 1
+    BOOST_CHECK_EQUAL(nncl[0], 1);  // LGR cell 0 → 1
+    BOOST_CHECK_EQUAL(nncg[1], 2);  // global cell 1 → 2
+    BOOST_CHECK_EQUAL(nncl[1], 2);  // LGR cell 1 → 2
 }
 
 
@@ -1115,7 +1185,9 @@ BOOST_AUTO_TEST_CASE(from_lgr_output_containers_basic)
 BOOST_AUTO_TEST_CASE(from_lgr_output_containers_all_empty)
 {
     const NNCCollection col = NNCCollection::fromLGROutputContainers({}, {}, {});
-    BOOST_CHECK(col.same_grid_nnc().empty());
+    // Grid 0 always exists; verify it holds no data and no other grids were added.
+    BOOST_CHECK_EQUAL(col.same_grid_nnc().size(), 1u);
+    BOOST_CHECK(col.getGlobalNNC().input().empty());
     BOOST_CHECK(col.diff_grid_nnc().empty());
 }
 
@@ -1206,7 +1278,8 @@ BOOST_AUTO_TEST_CASE(from_lgr_output_containers_only_global_local)
         },
         {});
 
-    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_CHECK_EQUAL(col.same_grid_nnc().size(), 1u);
+    BOOST_CHECK(col.getGlobalNNC().input().empty());
     BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 2u);
 
     BOOST_REQUIRE(col.hasCrossGridNNC(0, 1));
@@ -1293,7 +1366,8 @@ BOOST_AUTO_TEST_CASE(from_lgr_output_containers_amalgamated_index_formula)
         });
 
     // Exactly 6 cross-grid pairs, same-grid empty
-    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_CHECK_EQUAL(col.same_grid_nnc().size(), 1u);
+    BOOST_CHECK(col.getGlobalNNC().input().empty());
     BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 6u);
 
     // Verify each pair exists and holds exactly 1 entry with the expected cells
@@ -1365,7 +1439,8 @@ BOOST_AUTO_TEST_CASE(from_lgr_output_containers_multi_lgr_amalgamated)
             { { NNCdata(4, 5, 30.0) } }                              // [1][*]
         });
 
-    BOOST_CHECK(col.same_grid_nnc().empty());
+    BOOST_CHECK_EQUAL(col.same_grid_nnc().size(), 1u);
+    BOOST_CHECK(col.getGlobalNNC().input().empty());
     BOOST_REQUIRE_EQUAL(col.diff_grid_nnc().size(), 3u);
 
     BOOST_CHECK(col.hasCrossGridNNC(1, 2));
