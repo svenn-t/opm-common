@@ -684,7 +684,13 @@ private:
                                             const LhsEval& saltConcentration) const
     {
         if (enableSaltConcentration_) {
-            return saltConcentration/H2O::liquidDensity(T, P, true);
+            // Convert concentration [kg/m³] to mass fraction [kg_salt/kg_solution].
+            // First approximation using pure water density
+            const LhsEval rho_w = H2O::liquidDensity(T, P, true);
+            const LhsEval S_approx = saltConcentration / rho_w;
+            // Improved estimate using Batzle-Wang brine density
+            const LhsEval rho_brine = Brine::liquidDensity(T, P, S_approx, rho_w);
+            return saltConcentration / rho_brine;
         }
 
         return salinity(regionIdx);
