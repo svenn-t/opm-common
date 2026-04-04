@@ -272,7 +272,8 @@ public:
     template <class Evaluation>
     Evaluation diffusionCoefficient(const Evaluation& /*temperature*/,
                                     const Evaluation& /*pressure*/,
-                                    unsigned /*compIdx*/) const
+                                    unsigned /*compIdx*/,
+                                    unsigned /*regionIdx*/ = 0) const
     {
         throw std::runtime_error("Not implemented: The PVT model does not provide "
                                  "a diffusionCoefficient()");

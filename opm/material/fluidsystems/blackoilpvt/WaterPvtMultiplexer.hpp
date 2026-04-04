@@ -239,9 +239,10 @@ public:
     template <class Evaluation>
     Evaluation diffusionCoefficient(const Evaluation& temperature,
                                     const Evaluation& pressure,
-                                    unsigned compIdx) const
+                                    unsigned compIdx,
+                                    unsigned regionIdx = 0) const
     {
-      OPM_WATER_PVT_MULTIPLEXER_CALL(return pvtImpl.diffusionCoefficient(temperature, pressure, compIdx));
+      OPM_WATER_PVT_MULTIPLEXER_CALL(return pvtImpl.diffusionCoefficient(temperature, pressure, compIdx, regionIdx));
     }
 
     void setApproach(WaterPvtApproach appr);

@@ -384,7 +384,8 @@ public:
     template <class Evaluation>
     Evaluation diffusionCoefficient(const Evaluation& temperature,
                                     const Evaluation& pressure,
-                                    unsigned /*compIdx*/) const
+                                    unsigned /*compIdx*/,
+                                    unsigned regionIdx = 0) const
     {
         // Diffusion coefficient of H2 in pure water according to
         // Ferrell & Himmelbau, AIChE Journal, 13(4), 1967 (Eq. 23)
@@ -398,7 +399,7 @@ public:
         const Scalar lambda = 1.729; // quantum parameter [-]
         const Evaluation mu_pure = H2O::liquidViscosity(temperature, pressure, extrapolate) * 1e3;  // [cP]
         const Evaluation mu_brine = Brine::liquidViscosity(temperature, pressure,
-                                                           Evaluation(salinity_[0])) * 1e3;
+                                                           Evaluation(salinity_[regionIdx])) * 1e3;
 
         // Diffusion coeff in pure water in cm2/s
         const Evaluation D_pure = ((4.8e-7 * temperature) / pow(mu_pure, alpha)) *

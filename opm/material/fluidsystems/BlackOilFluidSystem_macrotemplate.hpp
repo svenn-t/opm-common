@@ -1762,11 +1762,12 @@ public:
 
         const auto& p = decay<LhsEval>(fluidState.pressure(phaseIdx));
         const auto& T = decay<LhsEval>(fluidState.temperature(phaseIdx));
+        const unsigned regionIdx = paramCache.regionIndex();
 
         switch (phaseIdx) {
         case oilPhaseIdx: return oilPvt().diffusionCoefficient(T, p, compIdx);
         case gasPhaseIdx: return gasPvt().diffusionCoefficient(T, p, compIdx);
-        case waterPhaseIdx: return waterPvt().diffusionCoefficient(T, p, compIdx);
+        case waterPhaseIdx: return waterPvt().diffusionCoefficient(T, p, compIdx, regionIdx);
         default: throw std::logic_error("Unhandled phase index "+std::to_string(phaseIdx));
         }
     }
