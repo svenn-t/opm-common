@@ -29,6 +29,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace Opm {
@@ -161,6 +162,7 @@ public:
         serializer(values);
         serializer(injection_group_values);
         serializer(potentials);
+        serializer(potn_groups);
         serializer(guide_rates_expired);
     }
 
@@ -226,6 +228,7 @@ private:
     std::unordered_map<std::string, GRValPtr> values{};
     std::unordered_map<pair, double, pair_hash> injection_group_values{};
     std::unordered_map<std::string, RateVector> potentials{};
+    std::unordered_set<std::string> potn_groups{};
     bool guide_rates_expired {false};
 };
 
