@@ -76,6 +76,7 @@ void Opm::GuideRate::setSerializationTestData()
     values.emplace("test1", std::make_unique<GRValState>(GRValState::serializationTestObject()));
     injection_group_values = {{{Phase::FOAM, "test2"}, 1.0}};
     potentials = {{"test3", RateVector::serializationTestObject()}};
+    potn_groups = {"test4"};
     guide_rates_expired = true;
 }
 
@@ -202,7 +203,7 @@ double Opm::GuideRate::getSI(const std::string& group, const Phase& phase) const
 
 bool Opm::GuideRate::has(const std::string& name) const
 {
-    return this->values.count(name) > 0;
+    return this->values.count(name) > 0 || this->potn_groups.count(name) > 0;
 }
 
 bool Opm::GuideRate::hasPotentials(const std::string& name) const
@@ -219,6 +220,7 @@ void Opm::GuideRate::erase(const std::string& name)
 {
     this->values.erase(name);
     this->potentials.erase(name);
+    this->potn_groups.erase(name);
 
     // Also erase any injection group guide rates for all phases
     for (int p = 0; p < NUM_PHASES_IN_ENUM; ++p) {
@@ -253,6 +255,15 @@ void Opm::GuideRate::group_compute(const std::string& wgname,
 {
     const auto& config = this->schedule[report_step].guide_rate();
     const auto& group = config.production_group(wgname);
+    if (group.target == Group::GuideRateProdTarget::POTN) {
+        // POTN: guide rate equals the group's production potential.
+        // The potentials are already stored in this->potentials by the caller
+        // (GuideRate::compute()). GuideRate::get() falls back to potentials
+        // when no entry exists in this->values, correctly selecting the
+        // appropriate phase component via RateVector::eval().
+        this->potn_groups.insert(wgname);
+        return;
+    }
     if (group.guide_rate > 0.0) {
         auto model_target = GuideRateModel::convert_target(group.target);
 
@@ -283,9 +294,7 @@ void Opm::GuideRate::group_compute(const std::string& wgname,
             throw std::logic_error("Group guide rate mode: INJV not implemented");
         }
 
-        if (group.target == Group::GuideRateProdTarget::POTN) {
-            throw std::logic_error("Group guide rate mode: POTN not implemented");
-        }
+
 
         if (is_formula) {
             const auto guide_rate = this->eval_form(config.model(), "group " + wgname, oil_pot, gas_pot, wat_pot);

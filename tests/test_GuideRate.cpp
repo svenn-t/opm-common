@@ -578,4 +578,203 @@ BOOST_AUTO_TEST_CASE(P_Third_df09)
     BOOST_CHECK( wi.getGuideRatePhase() == Opm::Well::GuideRateTarget::GAS );
 }
 
+// ======================================================================
+// POTN guide rate tests
+// ======================================================================
+
+namespace {
+    // Minimal deck with a group using POTN guide rate.
+    // Group P has two wells (P1, P2) and uses POTN for its guide rate definition.
+    Setup case_potn_group()
+    {
+        const auto input = std::string { R"(RUNSPEC
+START
+  4 'AUG' 2020 /
+
+DIMENS
+  10 10 10 /
+
+OIL
+GAS
+WATER
+DISGAS
+VAPOIL
+
+METRIC
+
+TABDIMS
+/
+
+WELLDIMS
+3 10 2 2 /
+
+GRID
+
+DXV
+  10*100 /
+DYV
+  10*100 /
+DZV
+  10*5 /
+DEPTHZ
+  121*2000 /
+PERMX
+  1000*100 /
+COPY
+  PERMX PERMY /
+  PERMX PERMZ /
+/
+MULTIPLY
+  PERMZ 0.1 /
+/
+PORO
+  1000*0.3 /
+
+SOLUTION
+
+PRESSURE
+  1000*320 /
+SOIL
+  1000*0.85 /
+SWAT
+  1000*0.12 /
+SGAS
+  1000*0.03 /
+RS
+  1000*226.0 /
+RV
+  1000*0.0 /
+
+SCHEDULE
+
+WELSPECS
+  P1 P 10 7 2002.5 OIL /
+  P2 P 7 10 2002.5 OIL /
+/
+
+COMPDAT
+  P1 2* 1 10 OPEN 1* 1* 0.5 /
+  P2 2* 1 10 OPEN 1* 1* 0.5 /
+/
+
+WCONPROD
+  P* OPEN GRUP 150 100 15E+3 250 1* 50 /
+/
+
+GCONPROD
+  P 'ORAT' 200.0 150.0 100.0E+3 1* 1* YES 1* 'POTN' /
+/
+
+DATES
+  5 'AUG' 2020 /
+/
+
+END
+)" };
+
+        return Setup { input };
+    }
+} // Namespace anonymous
+
+BOOST_AUTO_TEST_CASE(POTN_has_and_get)
+{
+    auto cse = case_potn_group();
+
+    const auto oil_pot = 6000.0;
+    const auto gas_pot = 3000.0;
+    const auto wat_pot = 1000.0;
+    const auto stm = 0.0; // simulation time
+    const auto rpt = size_t{1}; // report step
+
+    // Before compute: group P should not have a guide rate
+    BOOST_CHECK(!cse.gr.has("P"));
+
+    cse.gr.updateGuideRateExpiration(stm, rpt);
+    cse.gr.compute("P", rpt, stm, oil_pot, gas_pot, wat_pot);
+
+    // After compute: group P should have a guide rate (via potn_groups)
+    BOOST_CHECK(cse.gr.has("P"));
+    BOOST_CHECK(cse.gr.hasPotentials("P"));
+
+    // get() should return the potential for each target phase (potentials fallback)
+    const auto dummy_rates = Opm::GuideRate::RateVector{/*orat=*/1.0, /*grat=*/1.0, /*wrat=*/1.0};
+
+    // OIL target -> oil potential
+    {
+        const auto grval = cse.gr.get("P", Opm::Group::GuideRateProdTarget::OIL, dummy_rates);
+        BOOST_CHECK_CLOSE(grval, oil_pot, 1.0e-10);
+    }
+
+    // GAS target -> gas potential
+    {
+        const auto grval = cse.gr.get("P", Opm::Group::GuideRateProdTarget::GAS, dummy_rates);
+        BOOST_CHECK_CLOSE(grval, gas_pot, 1.0e-10);
+    }
+
+    // WAT target -> water potential
+    {
+        const auto grval = cse.gr.get("P", Opm::Group::GuideRateProdTarget::WAT, dummy_rates);
+        BOOST_CHECK_CLOSE(grval, wat_pot, 1.0e-10);
+    }
+
+    // LIQ target -> oil + water potential
+    {
+        const auto grval = cse.gr.get("P", Opm::Group::GuideRateProdTarget::LIQ, dummy_rates);
+        BOOST_CHECK_CLOSE(grval, oil_pot + wat_pot, 1.0e-10);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(POTN_erase)
+{
+    auto cse = case_potn_group();
+
+    const auto oil_pot = 6000.0;
+    const auto gas_pot = 3000.0;
+    const auto wat_pot = 1000.0;
+    const auto stm = 0.0; // simulation time
+    const auto rpt = size_t{1}; // report step
+
+    cse.gr.updateGuideRateExpiration(stm, rpt);
+    cse.gr.compute("P", rpt, stm, oil_pot, gas_pot, wat_pot);
+    BOOST_CHECK(cse.gr.has("P"));
+
+    cse.gr.erase("P");
+    BOOST_CHECK(!cse.gr.has("P"));
+    BOOST_CHECK(!cse.gr.hasPotentials("P"));
+
+    // Re-compute: should work again
+    cse.gr.compute("P", rpt, stm, oil_pot, gas_pot, wat_pot);
+    BOOST_CHECK(cse.gr.has("P"));
+}
+
+BOOST_AUTO_TEST_CASE(POTN_updated_potentials)
+{
+    auto cse = case_potn_group();
+
+    const auto stm1 = 0.0; // simulation time
+    const auto rpt = size_t{1}; // report step
+
+    cse.gr.updateGuideRateExpiration(stm1, rpt);
+    cse.gr.compute("P", rpt, stm1, /*oil_pot=*/6000.0, /*gas_pot=*/3000.0, /*wat_pot=*/1000.0);
+
+    // First call: oil potential = 6000
+    {
+        const auto dummy_rates = Opm::GuideRate::RateVector{/*orat=*/1.0, /*grat=*/1.0, /*wrat=*/1.0};
+        const auto grval = cse.gr.get("P", Opm::Group::GuideRateProdTarget::OIL, dummy_rates);
+        BOOST_CHECK_CLOSE(grval, 6000.0, 1.0e-10);
+    }
+
+    // Update with new potentials
+    const auto stm2 = 10.0 * Opm::unit::day; // simulation time
+    cse.gr.updateGuideRateExpiration(stm2, rpt);
+    cse.gr.compute("P", rpt, stm2, /*oil_pot=*/4000.0, /*gas_pot=*/2000.0, /*wat_pot=*/500.0);
+
+    // Second call: oil potential should be updated to 4000
+    {
+        const auto dummy_rates = Opm::GuideRate::RateVector{/*orat=*/1.0, /*grat=*/1.0, /*wrat=*/1.0};
+        const auto grval = cse.gr.get("P", Opm::Group::GuideRateProdTarget::OIL, dummy_rates);
+        BOOST_CHECK_CLOSE(grval, 4000.0, 1.0e-10);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END() // GuideRate_Calculations
