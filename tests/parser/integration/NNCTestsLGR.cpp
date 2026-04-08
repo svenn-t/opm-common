@@ -503,9 +503,11 @@ BOOST_AUTO_TEST_CASE(invalid_entry)
 
 BOOST_AUTO_TEST_CASE(check_absent_el)
 {
-    // Grid 0 always exists in the map; grids > 0 are absent until added.
+    // hasSameGridNNC checks data presence, not map presence.
+    // A default-constructed collection has grid 0 in the map but with no
+    // NNC entries, so it returns false for both grid 0 and grid 1.
     NNCCollection col;
-    BOOST_CHECK(col.hasSameGridNNC(std::size_t{0}));
+    BOOST_CHECK(!col.hasSameGridNNC(std::size_t{0}));
     BOOST_CHECK(!col.hasSameGridNNC(std::size_t{1}));
 }
 

@@ -487,7 +487,8 @@ NNCDataContainerDiffGrid& NNCCollection::getNNC(std::size_t grid1, std::size_t g
 
 bool NNCCollection::hasCrossGridNNC(std::size_t grid1, std::size_t grid2) const
 {
-    return m_diffGridNNCs.count(std::make_pair(grid1, grid2)) > 0;
+    const auto key = std::minmax(grid1, grid2);
+    return m_diffGridNNCs.count(key) > 0;
 }
 
 /// Adds a same-grid NNC for @p grid.
@@ -529,7 +530,8 @@ NNCDataContainer& NNCCollection::getNNC(std::size_t grid)
 
 bool NNCCollection::hasSameGridNNC(std::size_t grid) const
 {
-    return m_sameGridNNCs.count(grid) > 0;
+    auto it = m_sameGridNNCs.find(grid);
+    return it != m_sameGridNNCs.end() && !it->second.input().empty();
 }
 
 /// Replaces the global (grid 0) same-grid NNC.

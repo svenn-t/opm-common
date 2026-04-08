@@ -228,7 +228,9 @@ public:
     {
         for (const auto& [grid, nnc] : m_sameGridNNCs)
             if (!nnc.input().empty()) return false;
-        return m_diffGridNNCs.empty();
+        for (const auto& [grids, nnc] : m_diffGridNNCs)
+            if (!nnc.input().empty()) return false;
+        return true;
     }
     // ---- same-grid access -------------------------------------------------
 
@@ -251,11 +253,16 @@ public:
     /// same-grid NNCs with data, or cross-grid NNCs with any other grid.
     bool hasNNCForGrid(std::size_t grid_index) const
     {
-        if (grid_index == 0 ? hasGlobalNNC() : hasSameGridNNC(grid_index))
+        if (((grid_index == 0) && hasGlobalNNC()) || ((grid_index != 0) && hasSameGridNNC(grid_index)))
+        {
             return true;
-        for (const auto& entry : m_diffGridNNCs) {
-            if (entry.first.first == grid_index || entry.first.second == grid_index)
+        }
+        for (const auto& [grid, nnc] : m_diffGridNNCs) {
+            if (const auto& [g1, g2] = grid;
+                ((g1 == grid_index) || (g2 == grid_index)) && !nnc.input().empty())
+            {
                 return true;
+            }
         }
         return false;
     }
