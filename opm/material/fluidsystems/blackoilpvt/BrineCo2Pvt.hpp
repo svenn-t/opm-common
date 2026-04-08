@@ -504,7 +504,8 @@ public:
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation diffusionCoefficient(const Evaluation& temperature,
                                     const Evaluation& pressure,
-                                    unsigned /*compIdx*/) const
+                                    unsigned /*compIdx*/,
+                                    unsigned regionIdx = 0) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         // Diffusion coefficient of CO2 in pure water according to
@@ -521,11 +522,11 @@ public:
         if (enableEzrokhiViscosity_) {
             const Evaluation& nacl_exponent = ezrokhiExponent_(temperature,
                                                                ezrokhiViscNaClCoeff_);
-            mu_Brine = mu_H20 * pow(10.0, nacl_exponent * Evaluation(salinity_[0]));
+            mu_Brine = mu_H20 * pow(10.0, nacl_exponent * Evaluation(salinity_[regionIdx]));
         }
         else {
             // Brine viscosity
-            mu_Brine = Brine::liquidViscosity(temperature, pressure, Evaluation(salinity_[0]));
+            mu_Brine = Brine::liquidViscosity(temperature, pressure, Evaluation(salinity_[regionIdx]));
         }
         const Evaluation log_D_Brine = log_D_H20 - 0.87*log10(mu_Brine / mu_H20);
 
@@ -811,7 +812,13 @@ private:
                                             const LhsEval& saltConcentration) const
     {
         if (enableSaltConcentration_) {
-            return saltConcentration/H2O::liquidDensity(T, P, true);
+            // Convert concentration [kg/m³] to mass fraction [kg_salt/kg_solution].
+            // First approximation using pure water density
+            const LhsEval rho_w = H2O::liquidDensity(T, P, true);
+            const LhsEval S_approx = saltConcentration / rho_w;
+            // Improved estimate using Batzle-Wang brine density
+            const LhsEval rho_brine = Brine::liquidDensity(T, P, S_approx, rho_w);
+            return saltConcentration / rho_brine;
         }
 
         return salinity(regionIdx);
