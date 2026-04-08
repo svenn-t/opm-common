@@ -342,6 +342,8 @@ if(SuiteSparse_FOUND)
         target_link_libraries(SuiteSparse::${_MODULE}
           INTERFACE
             ${config_LIBRARY}
+            ${SuiteSparse_EXTRA_LIBS}
+            ${${MODULE}_EXTRA_LIBS}
         )
         target_link_libraries(SuiteSparse::SuiteSparse
           INTERFACE
