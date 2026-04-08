@@ -502,6 +502,49 @@ namespace Opm {
         friend std::ostream& operator<<(std::ostream& os, const Schedule& sched);
         void dump_deck(std::ostream& os) const;
 
+        /// Update satellite production rates for a group at the given report step.
+        ///
+        /// Used by reservoir coupling to inject slave production data into the
+        /// master's summary output.  The existing GSatProd / satellite_rate
+        /// machinery in Summary.cpp picks up the rates automatically so that all
+        /// field-level and group-level rate vectors (FOPR, GOPR, FGOR, ...) are
+        /// computed correctly.
+        ///
+        /// Rates are in SI units (sm3/s for surface, rm3/s for reservoir).
+        ///
+        /// \param[in] report_step  0-based report step index.
+        /// \param[in] group_name   Master group name.
+        /// \param[in] oil_rate     Oil surface production rate.
+        /// \param[in] gas_rate     Gas surface production rate.
+        /// \param[in] water_rate   Water surface production rate.
+        /// \param[in] resv_rate    Reservoir voidage production rate.
+        void updateSatelliteProduction(std::size_t report_step,
+                                       const std::string& group_name,
+                                       double oil_rate,
+                                       double gas_rate,
+                                       double water_rate,
+                                       double resv_rate);
+
+        /// Update satellite injection rates for a group at the given report step.
+        ///
+        /// Used by reservoir coupling to inject slave injection data into the
+        /// master's summary output.  The existing GroupSatelliteInjection /
+        /// satellite_rate machinery in Summary.cpp picks up the rates
+        /// automatically.
+        ///
+        /// Rates are in SI units (sm3/s for surface, rm3/s for reservoir).
+        ///
+        /// \param[in] report_step     0-based report step index.
+        /// \param[in] group_name      Master group name.
+        /// \param[in] phase           Injection phase (OIL, GAS, or WATER).
+        /// \param[in] surface_rate    Surface injection rate.
+        /// \param[in] reservoir_rate  Reservoir injection rate.
+        void updateSatelliteInjection(std::size_t report_step,
+                                      const std::string& group_name,
+                                      Phase phase,
+                                      double surface_rate,
+                                      double reservoir_rate);
+
     private:
         friend class HandlerContext;
 

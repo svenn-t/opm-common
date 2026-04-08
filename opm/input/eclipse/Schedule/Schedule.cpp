@@ -47,6 +47,7 @@
 #include <opm/input/eclipse/Schedule/Group/GConSale.hpp>
 #include <opm/input/eclipse/Schedule/Group/GConSump.hpp>
 #include <opm/input/eclipse/Schedule/Group/GroupEconProductionLimits.hpp>
+#include <opm/input/eclipse/Schedule/Group/GroupSatelliteInjection.hpp>
 #include <opm/input/eclipse/Schedule/Group/GSatProd.hpp>
 #include <opm/input/eclipse/Schedule/Group/GTNode.hpp>
 #include <opm/input/eclipse/Schedule/Group/GuideRateConfig.hpp>
@@ -3065,6 +3066,74 @@ void Schedule::create_next(const ScheduleBlock& block) {
 void Schedule::dump_deck(std::ostream& os) const
 {
     this->m_sched_deck.dump_deck(os, this->getUnits());
+}
+
+void Schedule::updateSatelliteProduction(const std::size_t report_step,
+                                         const std::string& group_name,
+                                         const double oil_rate,
+                                         const double gas_rate,
+                                         const double water_rate,
+                                         const double resv_rate)
+{
+    auto gsatprod = this->snapshots[report_step].gsatprod();
+
+    // GSatProd::assign() stores rates as UDAValue.  Reservoir coupling slave
+    // rates are already in SI, which is what GSatProd expects (the keyword
+    // handler converts from deck units to SI, but here we supply SI directly).
+    gsatprod.assign(group_name,
+                    UDAValue(oil_rate),
+                    UDAValue(gas_rate),
+                    UDAValue(water_rate),
+                    UDAValue(resv_rate),
+                    UDAValue(0.0),   // gas-lift rate (not used in reservoir coupling)
+                    0.0);            // udq_undefined
+
+    this->snapshots[report_step].gsatprod.update(std::move(gsatprod));
+
+    // NOTE on recordSatelliteProduction() / restart support:
+    //
+    // Master groups are leaf nodes with no subordinate wells or groups,
+    // making them structurally identical to GSATPROD satellite groups.
+    // Calling recordSatelliteProduction() would be semantically correct,
+    // and AggregateGroupData's assert (groups().empty() && wells().empty())
+    // would hold.
+    //
+    // However, recordSatelliteProduction() affects restart file output
+    // (AggregateGroupData.cpp), and restart support for reservoir coupling
+    // is planned for a later PR.  We skip the call here because:
+    // 1) The summary machinery (satellite_rate -> satellite_prod) only
+    //    checks gsatprod.has(group), not group.hasSatelliteProduction().
+    // 2) Skipping avoids any unintended restart side effects.
+    //
+    // TODO: When adding restart support for reservoir coupling, call
+    //   grp.recordSatelliteProduction() here and verify that restart
+    //   file output (AggregateGroupData) handles master groups correctly.
+}
+
+void Schedule::updateSatelliteInjection(const std::size_t report_step,
+                                        const std::string& group_name,
+                                        const Phase phase,
+                                        const double surface_rate,
+                                        const double reservoir_rate)
+{
+    auto& sat_inj = this->snapshots[report_step].satelliteInjection;
+
+    if (!sat_inj.has(group_name)) {
+        sat_inj.update(GroupSatelliteInjection{group_name});
+    }
+
+    auto gsatinje = sat_inj(group_name);
+    gsatinje.rate(phase).surface(surface_rate);
+    gsatinje.rate(phase).reservoir(reservoir_rate);
+    sat_inj.update(std::move(gsatinje));
+
+    // NOTE on recordSatelliteInjection() / restart support:
+    // Same reasoning as updateSatelliteProduction() above, we skip
+    // tagging the group to avoid restart side effects.  The summary
+    // machinery only checks satelliteInjection.has(group).
+    //
+    // TODO: When adding restart support for reservoir coupling, call
+    //   grp.recordSatelliteInjection(phase) here.
 }
 
 std::ostream& operator<<(std::ostream& os, const Schedule& sched)
