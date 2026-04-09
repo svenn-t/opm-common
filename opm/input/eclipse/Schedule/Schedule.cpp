@@ -3067,6 +3067,115 @@ void Schedule::dump_deck(std::ostream& os) const
     this->m_sched_deck.dump_deck(os, this->getUnits());
 }
 
+void Schedule::updateSlaveGroupProductionTarget(const std::size_t report_step,
+                                                const std::string& group_name,
+                                                const Group::ProductionCMode cmode,
+                                                const double target)
+{
+    auto grp = this->snapshots[report_step].groups(group_name);
+
+    // Build production properties that make the group behave like it has GCONPROD.
+    // We use the group's existing production properties as a base (in case the slave
+    // deck already has GCONPROD entries), and update only the fields relevant to
+    // the master's target.
+    auto production = grp.productionProperties();
+    production.cmode = cmode;
+    // Note: available_group_control is not overwritten here.  It defaults to
+    // true in GroupProductionProperties, and if the slave deck has GCONPROD
+    // with a different value, we preserve the user's setting.
+
+    // Set the target for the active control mode and register it as a control.
+    // The group_limit_action for the active mode is set to RATE so that when the
+    // constraint is exceeded, the well rates are scaled down proportionally (the
+    // default NONE action would do nothing).
+    switch (cmode) {
+    case Group::ProductionCMode::ORAT:
+        production.oil_target = UDAValue(target);
+        production.production_controls |= static_cast<int>(Group::ProductionCMode::ORAT);
+        production.group_limit_action.oil = Group::ExceedAction::RATE;
+        break;
+    case Group::ProductionCMode::WRAT:
+        production.water_target = UDAValue(target);
+        production.production_controls |= static_cast<int>(Group::ProductionCMode::WRAT);
+        production.group_limit_action.water = Group::ExceedAction::RATE;
+        break;
+    case Group::ProductionCMode::GRAT:
+        production.gas_target = UDAValue(target);
+        production.production_controls |= static_cast<int>(Group::ProductionCMode::GRAT);
+        production.group_limit_action.gas = Group::ExceedAction::RATE;
+        break;
+    case Group::ProductionCMode::LRAT:
+        production.liquid_target = UDAValue(target);
+        production.production_controls |= static_cast<int>(Group::ProductionCMode::LRAT);
+        production.group_limit_action.liquid = Group::ExceedAction::RATE;
+        break;
+    case Group::ProductionCMode::RESV:
+        production.resv_target = UDAValue(target);
+        production.production_controls |= static_cast<int>(Group::ProductionCMode::RESV);
+        // For RESV, the group_limit_action is always  RATE.
+        break;
+    default:
+        break;
+    }
+
+    // updateProduction() sets the group type to PRODUCTION and stores
+    // the production properties.
+    grp.updateProduction(production);
+    this->snapshots[report_step].groups.update(std::move(grp));
+}
+
+void Schedule::updateSlaveGroupInjectionTarget(const std::size_t report_step,
+                                               const std::string& group_name,
+                                               const Phase phase,
+                                               const Group::InjectionCMode cmode,
+                                               const double target)
+{
+    auto grp = this->snapshots[report_step].groups(group_name);
+
+    // Build injection properties that make the group behave like it has GCONINJE.
+    // Use existing properties for this phase as a base (in case the slave deck
+    // already has GCONINJE entries), otherwise create new ones.
+    auto injection = grp.hasInjectionControl(phase)
+        ? grp.injectionProperties(phase)
+        : Group::GroupInjectionProperties{group_name, phase, this->m_static.m_unit_system};
+
+    injection.cmode = cmode;
+    // Note: available_group_control is not overwritten here.  It defaults to
+    // true in GroupInjectionProperties, and if the slave deck has GCONINJE
+    // with a different value, we preserve the user's setting.
+
+    // Set the target for the active control mode and register it as a control.
+    // Note: in reservoir coupling, the master always sends RATE mode (the numeric
+    // value is already a surface rate for all modes).  The RESV/REIN/VREP cases
+    // are included for completeness but are not expected to be reached in practice.
+    // See RescoupConstraintsCalculator.cpp for details.
+    switch (cmode) {
+    case Group::InjectionCMode::RATE:
+        injection.surface_max_rate = UDAValue(target);
+        injection.injection_controls |= static_cast<int>(Group::InjectionCMode::RATE);
+        break;
+    case Group::InjectionCMode::RESV:
+        injection.resv_max_rate = UDAValue(target);
+        injection.injection_controls |= static_cast<int>(Group::InjectionCMode::RESV);
+        break;
+    case Group::InjectionCMode::REIN:
+        injection.target_reinj_fraction = UDAValue(target);
+        injection.injection_controls |= static_cast<int>(Group::InjectionCMode::REIN);
+        break;
+    case Group::InjectionCMode::VREP:
+        injection.target_void_fraction = UDAValue(target);
+        injection.injection_controls |= static_cast<int>(Group::InjectionCMode::VREP);
+        break;
+    default:
+        break;
+    }
+
+    // updateInjection() sets the group type to INJECTION and stores
+    // the injection properties for this phase.
+    grp.updateInjection(injection);
+    this->snapshots[report_step].groups.update(std::move(grp));
+}
+
 std::ostream& operator<<(std::ostream& os, const Schedule& sched)
 {
     sched.dump_deck(os);

@@ -502,6 +502,44 @@ namespace Opm {
         friend std::ostream& operator<<(std::ostream& os, const Schedule& sched);
         void dump_deck(std::ostream& os) const;
 
+        /// Set up production properties on a slave group so that it behaves
+        /// as if it has a GCONPROD entry.
+        ///
+        /// In reservoir coupling, slave groups may not have GCONPROD in the
+        /// slave deck (the master provides the production target at runtime).
+        /// This method creates a synthetic GroupProductionProperties entry so
+        /// that the existing group constraint enforcement mechanisms
+        /// (checkGroupHigherConstraints, getWellGroupTargetProducer, etc.)
+        /// recognize the group as a production group and apply the target.
+        ///
+        /// \param[in] report_step  0-based report step index.
+        /// \param[in] group_name   Slave group name (e.g. "PLAT-A").
+        /// \param[in] cmode        Production control mode (e.g. ORAT).
+        /// \param[in] target       Production target in SI units (sm3/s).
+        void updateSlaveGroupProductionTarget(std::size_t report_step,
+            const std::string& group_name,
+            Group::ProductionCMode cmode,
+            double target);
+
+        /// Set up injection properties on a slave group so that it behaves
+        /// as if it has a GCONINJE entry.
+        ///
+        /// Mirrors updateSlaveGroupProductionTarget() for the injection side.
+        /// Creates a synthetic GroupInjectionProperties entry so that the
+        /// existing constraint enforcement mechanisms recognize the group as
+        /// an injection group and apply the master's target.
+        ///
+        /// \param[in] report_step  0-based report step index.
+        /// \param[in] group_name   Slave group name.
+        /// \param[in] phase        Injection phase (WATER, GAS, or OIL).
+        /// \param[in] cmode        Injection control mode (e.g. RATE, RESV).
+        /// \param[in] target       Injection target in SI units (sm3/s or rm3/s).
+        void updateSlaveGroupInjectionTarget(std::size_t report_step,
+            const std::string& group_name,
+            Phase phase,
+            Group::InjectionCMode cmode,
+            double target);
+
     private:
         friend class HandlerContext;
 

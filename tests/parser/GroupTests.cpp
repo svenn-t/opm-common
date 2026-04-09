@@ -1314,3 +1314,114 @@ GCONPROD
 
     BOOST_CHECK(sched[0].has_gpmaint());
 }
+
+// ============================================================
+// Tests for reservoir coupling Schedule update methods
+// ============================================================
+
+BOOST_AUTO_TEST_CASE(UpdateSlaveGroupProductionTarget)
+{
+    // Create a schedule with a group that has NO GCONPROD
+    auto sched = create_schedule(R"(
+START
+31 AUG 1993 /
+SCHEDULE
+GRUPTREE
+  'PLAT-A' 'FIELD' /
+/
+TSTEP
+  1 /
+)");
+
+    const auto report_step_idx = 0;
+    const auto& grp_before = sched.getGroup("PLAT-A", report_step_idx);
+    BOOST_CHECK(!grp_before.isProductionGroup());
+    BOOST_CHECK(!grp_before.has_control(Group::ProductionCMode::ORAT));
+
+    // Simulate what reservoir coupling does: set a production target
+    const double target_si = 9200.0 / 86400.0;  // 9200 SM3/day in SI
+    sched.updateSlaveGroupProductionTarget(report_step_idx, "PLAT-A",
+        Group::ProductionCMode::ORAT, target_si);
+
+    const auto& grp_after = sched.getGroup("PLAT-A", report_step_idx);
+    BOOST_CHECK(grp_after.isProductionGroup());
+    BOOST_CHECK(grp_after.has_control(Group::ProductionCMode::ORAT));
+
+    // Verify target value
+    SummaryState st(TimeService::now(), 0.0);
+    const auto controls = grp_after.productionControls(st);
+    BOOST_CHECK_CLOSE(controls.oil_target, target_si, 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(UpdateSlaveGroupProductionTarget_PreservesExisting)
+{
+    // Create a schedule where the group already has GCONPROD
+    auto sched = create_schedule(R"(
+START
+31 AUG 1993 /
+SCHEDULE
+GRUPTREE
+  'PLAT-A' 'FIELD' /
+/
+GCONPROD
+  'PLAT-A' 'ORAT' 5000 /
+/
+TSTEP
+  1 /
+)");
+
+    const auto report_step_idx = 0;
+    const auto& grp_before = sched.getGroup("PLAT-A", report_step_idx);
+    BOOST_CHECK(grp_before.isProductionGroup());
+    BOOST_CHECK(grp_before.has_control(Group::ProductionCMode::ORAT));
+
+    // Override with a master target
+    const double new_target_si = 3000.0 / 86400.0;
+    sched.updateSlaveGroupProductionTarget(report_step_idx, "PLAT-A",
+        Group::ProductionCMode::ORAT, new_target_si);
+
+    const auto& grp_after = sched.getGroup("PLAT-A", report_step_idx);
+    BOOST_CHECK(grp_after.isProductionGroup());
+
+    SummaryState st(TimeService::now(), 0.0);
+    const auto controls = grp_after.productionControls(st);
+    BOOST_CHECK_CLOSE(controls.oil_target, new_target_si, 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(UpdateSlaveGroupInjectionTarget)
+{
+    // Create a schedule with a group that has NO GCONINJE
+    auto sched = create_schedule(R"(
+START
+31 AUG 1993 /
+SCHEDULE
+GRUPTREE
+  'PLAT-A' 'FIELD' /
+/
+TSTEP
+  1 /
+)");
+
+    const auto report_step_idx = 0;
+    const auto& grp_before = sched.getGroup("PLAT-A", report_step_idx);
+    BOOST_CHECK(!grp_before.isInjectionGroup());
+    BOOST_CHECK(!grp_before.hasInjectionControl(Phase::WATER));
+
+    // Simulate what reservoir coupling does: set an injection target
+    const double target_si = 5000.0 / 86400.0;  // 5000 SM3/day in SI
+    sched.updateSlaveGroupInjectionTarget(report_step_idx, "PLAT-A",
+        Phase::WATER, Group::InjectionCMode::RATE, target_si);
+
+    const auto& grp_after = sched.getGroup("PLAT-A", report_step_idx);
+    BOOST_CHECK(grp_after.isInjectionGroup());
+    BOOST_CHECK(grp_after.hasInjectionControl(Phase::WATER));
+
+    // Verify the raw stored value.  Note: we don't check via injectionControls()
+    // because it applies eval_group_uda_rate() which does a unit conversion that
+    // assumes the value is in deck units.  In reservoir coupling, the target is
+    // already in SI and is used directly by getInjectionGroupTarget(), it
+    // bypasses injectionControls().
+    const auto& inj_props = grp_after.injectionProperties(Phase::WATER);
+    BOOST_CHECK_CLOSE(inj_props.surface_max_rate.get<double>(), target_si, 1e-10);
+    BOOST_CHECK(inj_props.cmode == Group::InjectionCMode::RATE);
+}
