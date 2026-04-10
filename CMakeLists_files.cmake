@@ -69,8 +69,6 @@ list(APPEND MAIN_SOURCE_FILES
   opm/common/utility/parameters/ParameterRequirement.cpp
   opm/common/utility/parameters/ParameterTools.cpp
   opm/common/utility/numeric/calculateCellVol.cpp
-  opm/common/utility/numeric/GeometryUtil.cpp
-  opm/common/utility/numeric/VectorUtil.cpp
   opm/common/utility/numeric/GridUtil.cpp
   opm/common/utility/numeric/MonotCubicInterpolator.cpp
   opm/common/utility/numeric/RootFinders.cpp
