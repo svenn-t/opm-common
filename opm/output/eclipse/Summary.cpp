@@ -683,6 +683,7 @@ struct fn_args
     const Opm::Inplace* initial_inplace{nullptr};
     const Opm::Inplace& inplace;
     const Opm::UnitSystem& unit_system;
+    const Opm::data::ReservoirCouplingGroupRates* rc_rates{nullptr};
 };
 
 /* Since there are several enums in opm scattered about more-or-less
@@ -871,6 +872,43 @@ double satellite_inj(const Opm::ScheduleState& sched, const std::string& group)
     return 0.0;
 }
 
+// Reservoir coupling: production rate for a master group
+template <rt phase>
+double rc_group_prod(const Opm::data::ReservoirCouplingGroupRates& rc_rates,
+                     const std::string& group)
+{
+    if (!rc_rates.hasProduction(group)) {
+        return 0.0;
+    }
+    const auto& prod = rc_rates.production.at(group);
+    if constexpr (phase == rt::oil) { return prod.oil; }
+    else if constexpr (phase == rt::gas) { return prod.gas; }
+    else if constexpr (phase == rt::wat) { return prod.water; }
+    return 0.0;
+}
+
+// Reservoir coupling: injection rate for a master group
+template <rt phase>
+double rc_group_inj(const Opm::data::ReservoirCouplingGroupRates& rc_rates,
+                    const std::string& group)
+{
+    auto it = rc_rates.injection.find(group);
+    if (it == rc_rates.injection.end()) {
+        return 0.0;
+    }
+
+    auto irate = [&rates = it->second](const Opm::Phase p)
+    {
+        auto pit = rates.find(p);
+        return (pit != rates.end()) ? pit->second.surface : 0.0;
+    };
+
+    if constexpr (phase == rt::oil) { return irate(Opm::Phase::OIL); }
+    else if constexpr (phase == rt::gas) { return irate(Opm::Phase::GAS); }
+    else if constexpr (phase == rt::wat) { return irate(Opm::Phase::WATER); }
+    return 0.0;
+}
+
 inline double cumulativeSatelliteEffFactor(const Opm::ScheduleState& sched,
                                            const std::string&        gr_name)
 {
@@ -962,7 +1000,19 @@ double satellite_rate(const fn_args& args)
         { return satellite_inj<phase>(sched, gname); });
     }
 
-    // Neither satellite injection nor satellite production.  Rate is zero.
+    // Reservoir coupling: master group production/injection rates from slaves.
+    if (args.rc_rates != nullptr) {
+        if (!injection) {
+            return satRate([&rc = *args.rc_rates](const std::string& gname)
+            { return rc_group_prod<phase>(rc, gname); });
+        }
+        else {
+            return satRate([&rc = *args.rc_rates](const std::string& gname)
+            { return rc_group_inj<phase>(rc, gname); });
+        }
+    }
+
+    // No satellite or reservoir coupling rates.
     return 0.0;
 }
 
@@ -4047,6 +4097,7 @@ namespace Evaluator {
         const std::map<std::pair<std::string, int>, double>& block;
         const Opm::data::Aquifers& aquifers;
         const std::unordered_map<std::string, Opm::data::InterRegFlowMap>& ireg;
+        const Opm::data::ReservoirCouplingGroupRates* rc_rates;
     };
 
     class Base
@@ -4096,7 +4147,8 @@ namespace Evaluator {
                 input.reg, input.grid, input.sched,
                 std::move(eFac.factors),
                 input.initial_inplace, simRes.inplace,
-                input.sched.getUnits()
+                input.sched.getUnits(),
+                simRes.rc_rates
             };
 
             const auto& usys = input.es.getUnits();
@@ -4967,7 +5019,8 @@ namespace Evaluator {
             this->st_,
             {}, {}, {},
             reg, this->grid_, this->sched_,
-            {}, {}, {}, this->es_.getUnits()
+            {}, {}, {}, this->es_.getUnits(),
+            nullptr
         };
 
         const auto prm = this->paramFunction_(args);
@@ -5420,7 +5473,8 @@ eval(const int                    sim_step,
         region_values,
         block_values,
         aquifer_values,
-        interreg_flows
+        interreg_flows,
+        values.rc_group_rates
     };
 
     for (auto& evalPtr : this->outputParameters_.getEvaluators()) {

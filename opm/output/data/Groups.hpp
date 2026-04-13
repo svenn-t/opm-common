@@ -287,6 +287,31 @@ namespace Opm { namespace data {
         return *this;
     }
 
+    /// Production and injection rates for reservoir coupling master groups.
+    ///
+    /// Passed through DynamicSimulatorState to Summary::eval() so that
+    /// rate-based summary vectors (FOPR, GOPR, etc.) include slave production.
+    struct ReservoirCouplingGroupRates {
+        struct ProductionRates {
+            double oil{0}, gas{0}, water{0}, resv{0};
+        };
+        struct InjectionRates {
+            double surface{0}, reservoir{0};
+        };
+        /// Per master-group production rates (positive values, SI units).
+        std::map<std::string, ProductionRates> production;
+        /// Per master-group, per-phase injection rates (SI units).
+        std::map<std::string, std::map<Opm::Phase, InjectionRates>> injection;
+
+        bool hasProduction(const std::string& group) const {
+            return production.count(group) > 0;
+        }
+        bool hasInjection(const std::string& group, Opm::Phase phase) const {
+            auto it = injection.find(group);
+            return it != injection.end() && it->second.count(phase) > 0;
+        }
+    };
+
 }} // Opm::data
 
 #endif //OPM_OUTPUT_GROUPS_HPP
