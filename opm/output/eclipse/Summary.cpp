@@ -877,13 +877,13 @@ template <rt phase>
 double rc_group_prod(const Opm::data::ReservoirCouplingGroupRates& rc_rates,
                      const std::string& group)
 {
-    if (!rc_rates.hasProduction(group)) {
+    const auto groupPos = rc_rates.production.find(group);
+    if (groupPos == rc_rates.production.end()) {
         return 0.0;
     }
-    const auto& prod = rc_rates.production.at(group);
-    if constexpr (phase == rt::oil) { return prod.oil; }
-    else if constexpr (phase == rt::gas) { return prod.gas; }
-    else if constexpr (phase == rt::wat) { return prod.water; }
+    if constexpr (phase == rt::oil) { return groupPos->second.oil; }
+    else if constexpr (phase == rt::gas) { return groupPos->second.gas; }
+    else if constexpr (phase == rt::wat) { return groupPos->second.water; }
     return 0.0;
 }
 

@@ -25,6 +25,7 @@
 #include <string>
 #include <utility>
 
+#include <opm/input/eclipse/EclipseState/Phase.hpp>
 #include <opm/output/data/GuideRateValue.hpp>
 #include <opm/input/eclipse/Schedule/Group/Group.hpp>
 
@@ -302,14 +303,6 @@ namespace Opm { namespace data {
         std::map<std::string, ProductionRates> production;
         /// Per master-group, per-phase injection rates (SI units).
         std::map<std::string, std::map<Opm::Phase, InjectionRates>> injection;
-
-        bool hasProduction(const std::string& group) const {
-            return production.count(group) > 0;
-        }
-        bool hasInjection(const std::string& group, Opm::Phase phase) const {
-            auto it = injection.find(group);
-            return it != injection.end() && it->second.count(phase) > 0;
-        }
     };
 
 }} // Opm::data
