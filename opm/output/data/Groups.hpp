@@ -25,6 +25,7 @@
 #include <string>
 #include <utility>
 
+#include <opm/input/eclipse/EclipseState/Phase.hpp>
 #include <opm/output/data/GuideRateValue.hpp>
 #include <opm/input/eclipse/Schedule/Group/Group.hpp>
 
@@ -286,6 +287,23 @@ namespace Opm { namespace data {
 
         return *this;
     }
+
+    /// Production and injection rates for reservoir coupling master groups.
+    ///
+    /// Passed through DynamicSimulatorState to Summary::eval() so that
+    /// rate-based summary vectors (FOPR, GOPR, etc.) include slave production.
+    struct ReservoirCouplingGroupRates {
+        struct ProductionRates {
+            double oil{0}, gas{0}, water{0}, resv{0};
+        };
+        struct InjectionRates {
+            double surface{0}, reservoir{0};
+        };
+        /// Per master-group production rates (positive values, SI units).
+        std::map<std::string, ProductionRates> production;
+        /// Per master-group, per-phase injection rates (SI units).
+        std::map<std::string, std::map<Opm::Phase, InjectionRates>> injection;
+    };
 
 }} // Opm::data
 

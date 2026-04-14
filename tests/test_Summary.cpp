@@ -7428,3 +7428,51 @@ BOOST_AUTO_TEST_CASE(append_summary_state)
 }
 
 BOOST_AUTO_TEST_SUITE_END() // Summary_State
+
+// ====================================================================
+
+BOOST_AUTO_TEST_SUITE(ReservoirCoupling)
+
+// Test that reservoir coupling group rates flow through
+// DynamicSimulatorState to Summary::eval() and appear in FOPR/GOPR.
+BOOST_AUTO_TEST_CASE(RC_GroupRates_In_Summary)
+{
+    setup cfg("test_summary_rc_rates");
+
+    auto writer = out::Summary {
+        cfg.config, cfg.es, cfg.grid, cfg.schedule, cfg.name
+    };
+
+    auto st = SummaryState {
+        TimeService::now(), cfg.es.runspec().udqParams().undefinedValue()
+    };
+
+    // Set up RC group rates for group G_1 (production only, no wells)
+    const double oil_rate_si = 100.0 / day;  // 100 SM3/day in SI (m3/s)
+    const double gas_rate_si = 50000.0 / day;
+    const double water_rate_si = 20.0 / day;
+
+    data::ReservoirCouplingGroupRates rc_rates;
+    rc_rates.production["G_1"] = {
+        .oil = oil_rate_si, .gas = gas_rate_si, .water = water_rate_si, .resv = 0.0
+    };
+
+    // Use empty well data. The master has no wells, so all production
+    // should come from the RC group rates via satellite_rate.
+    auto values = out::Summary::DynamicSimulatorState{};
+    values.group_and_nwrk_solution = &cfg.grp_nwrk;
+    values.rc_group_rates = &rc_rates;
+    // Note: well_solution in "values" deliberately left as nullptr (no wells on master)
+
+    writer.eval(/*report_step=*/0, /*secs_elapsed=*/0.0 * day, values, st);
+    writer.eval(/*report_step=*/1, /*secs_elapsed=*/1.0 * day, values, st);
+
+    // GOPR:G_1 should reflect the RC production rate (converted to SM3/day)
+    BOOST_CHECK_CLOSE(st.get_group_var("G_1", "GOPR"), oil_rate_si / sm3_pr_day(), 1e-5);
+
+    // FOPR should include the RC rate accumulated up from G_1 through
+    // the group tree to FIELD via accum_groups / satellite_rate.
+    BOOST_CHECK_CLOSE(st.get("FOPR"), oil_rate_si / sm3_pr_day(), 1e-5);
+}
+
+BOOST_AUTO_TEST_SUITE_END() // ReservoirCoupling

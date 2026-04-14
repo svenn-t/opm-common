@@ -21,6 +21,7 @@
 #define OPM_OUTPUT_SUMMARY_HPP
 
 #include <opm/output/data/Aquifer.hpp>
+#include <opm/output/data/Groups.hpp>
 #include <opm/output/data/InterRegFlowMap.hpp>
 
 #include <map>
@@ -141,6 +142,14 @@ public:
         ///
         /// Nullptr if unavailable.
         const InterRegFlowValues* interreg_flows {nullptr};
+
+        /// Reservoir coupling master group rates (production and injection).
+        ///
+        /// Populated by the simulator for reservoir coupling master models.
+        /// Used by Summary::eval() to include slave production/injection
+        /// in rate-based summary vectors (FOPR, GOPR, FGOR, etc.).
+        /// Nullptr if not a reservoir coupling master.
+        const data::ReservoirCouplingGroupRates* rc_group_rates {nullptr};
 
         /// Fluid phase volumes in place at the field and region levels.
         ///
