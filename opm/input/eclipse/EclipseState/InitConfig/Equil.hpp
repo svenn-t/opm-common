@@ -20,7 +20,7 @@ namespace Opm {
                         bool wet_gas_init,
                         int target_accuracy,
                         bool humid_gas_init);
-            EquilRecord(const DeckRecord& record, const Phases& phases, int region, const KeywordLocation& location);
+            EquilRecord(const DeckRecord& record, const Phases& phases, int region, const KeywordLocation& location, bool compositional);
 
             static EquilRecord serializationTestObject();
             double datumDepth() const;
@@ -33,6 +33,8 @@ namespace Opm {
             bool liveOilInitConstantRs() const;
             bool wetGasInitConstantRv() const;
             int initializationTargetAccuracy() const;
+            int compositionalInitType() const;
+            bool setToSaturaionPressure() const;
             bool humidGasInitConstantRvw() const;
 
             bool operator==(const EquilRecord& data) const;
@@ -49,6 +51,8 @@ namespace Opm {
                 serializer(live_oil_init_proc);
                 serializer(wet_gas_init_proc);
                 serializer(init_target_accuracy);
+                serializer(comp_init_type);
+                serializer(set_to_saturaion_pressure);
                 serializer(humid_gas_init_proc);
             }
 
@@ -63,13 +67,16 @@ namespace Opm {
             bool live_oil_init_proc = false;
             bool wet_gas_init_proc = false;
             int init_target_accuracy = 0;
+            int comp_init_type = 0; // only for compositional modeling
+            // whether to set the field pressure to saturation pressure at the contact if comp_init_type is 2 or 3
+            bool set_to_saturaion_pressure = true; // only for compositional modeling
             bool humid_gas_init_proc = false;
     };
 
     class StressEquilRecord {
         public:
             StressEquilRecord() = default;
-            StressEquilRecord(const DeckRecord& record, const Phases& phases, int region, const KeywordLocation& location);
+            StressEquilRecord(const DeckRecord& record, const Phases& phases, int region, const KeywordLocation& location, bool compositional);
 
             static StressEquilRecord serializationTestObject();
 
@@ -138,7 +145,7 @@ namespace Opm {
             using const_iterator = typename std::vector<RecordType>::const_iterator;
 
             EquilContainer() = default;
-            EquilContainer( const DeckKeyword&, const Phases& );
+            EquilContainer( const DeckKeyword&, const Phases&, bool );
 
             static EquilContainer serializationTestObject();
 

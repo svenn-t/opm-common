@@ -44,7 +44,7 @@ namespace Opm {
         }
     }
 
-    EquilRecord::EquilRecord(const DeckRecord& record, const Phases& phases, int region, const KeywordLocation& location)
+    EquilRecord::EquilRecord(const DeckRecord& record, const Phases& phases, int region, const KeywordLocation& location, bool compositional)
         : datum_depth(record.getItem<ParserKeywords::EQUIL::DATUM_DEPTH>().getSIDouble(0))
         , datum_depth_ps(record.getItem<ParserKeywords::EQUIL::DATUM_PRESSURE>().getSIDouble(0))
         , water_oil_contact_depth(record.getItem<ParserKeywords::EQUIL::OWC>().getSIDouble(0))
@@ -53,7 +53,6 @@ namespace Opm {
         , gas_oil_contact_capillary_pressure(record.getItem<ParserKeywords::EQUIL::PC_GOC>().getSIDouble(0))
         , live_oil_init_proc(record.getItem<ParserKeywords::EQUIL::BLACK_OIL_INIT>().get<int>(0) <= 0)
         , wet_gas_init_proc(record.getItem<ParserKeywords::EQUIL::BLACK_OIL_INIT_WG>().get<int>(0) <= 0)
-        , init_target_accuracy(record.getItem<ParserKeywords::EQUIL::OIP_INIT>().get<int>(0))
         , humid_gas_init_proc(record.getItem<ParserKeywords::EQUIL::BLACK_OIL_INIT_HG>().get<int>(0) <= 0)
     {
         const bool three_phases = phases.active(Phase::WATER) && phases.active(Phase::OIL) && phases.active(Phase::GAS);
@@ -64,6 +63,23 @@ namespace Opm {
                                                 "Depth of gas-oil contact ({}) is below depth of water-oil contact ({}).",
                                                 region, goc_depth_input, woc_depth_input);
             throw OpmInputError(msg, location);
+        }
+
+        if (record.getItem<ParserKeywords::EQUIL::OIP_INIT>().defaultApplied(0)) {
+            if (compositional) {
+                init_target_accuracy = 0;
+            } else {
+                init_target_accuracy = -5;
+            }
+        } else {
+            init_target_accuracy = record.getItem<ParserKeywords::EQUIL::OIP_INIT>().get<int>(0);
+        }
+
+        if (compositional) {
+            comp_init_type = record.getItem<ParserKeywords::EQUIL::COMP_INIT_TYPE>().get<int>(0);
+            if (comp_init_type == 2 || comp_init_type == 3) {
+                set_to_saturaion_pressure = record.getItem<ParserKeywords::EQUIL::COMP_NOT_SET_SAT_PRESSURE>().get<int>(0) != 1;
+            }
         }
     }
 
@@ -108,6 +124,14 @@ namespace Opm {
         return this->init_target_accuracy;
     }
 
+    int EquilRecord::compositionalInitType() const {
+        return this->comp_init_type;
+    }
+
+    bool EquilRecord::setToSaturaionPressure() const {
+       return this->set_to_saturaion_pressure;
+    }
+
     bool EquilRecord::humidGasInitConstantRvw() const {
         return this->humid_gas_init_proc;
     }
@@ -124,11 +148,14 @@ namespace Opm {
                live_oil_init_proc == data.live_oil_init_proc &&
                wet_gas_init_proc == data.wet_gas_init_proc &&
                init_target_accuracy == data.init_target_accuracy &&
+               comp_init_type == data.comp_init_type &&
+               set_to_saturaion_pressure == data.set_to_saturaion_pressure &&
                humid_gas_init_proc == data.humid_gas_init_proc;
     }
 
     StressEquilRecord::StressEquilRecord(const DeckRecord& record, const Phases& /* phases */,
-                                         int /* region */, const KeywordLocation& /* location */)
+                                         int /* region */, const KeywordLocation& location,
+                                         bool compositional)
         : datum_depth(record.getItem<ParserKeywords::STREQUIL::DATUM_DEPTH>().getSIDouble(0))
         , datum_posx(record.getItem<ParserKeywords::STREQUIL::DATUM_POSX>().getSIDouble(0))
         , datum_posy(record.getItem<ParserKeywords::STREQUIL::DATUM_POSY>().getSIDouble(0))
@@ -144,7 +171,14 @@ namespace Opm {
         , stress_xz_grad(record.getItem<ParserKeywords::STREQUIL::STRESSXZGRAD>().getSIDouble(0))
         , stress_yz(record.getItem<ParserKeywords::STREQUIL::STRESSYZ>().getSIDouble(0))
         , stress_yz_grad(record.getItem<ParserKeywords::STREQUIL::STRESSYZGRAD>().getSIDouble(0))
-    {}
+    {
+        if (compositional) {
+            throw OpmInputError {
+                "STREQUIL keyword is not supported for compositional simulations.",
+                location
+            };
+        }
+    }
 
     StressEquilRecord StressEquilRecord::serializationTestObject()
     {
@@ -256,11 +290,11 @@ namespace Opm {
     /* ----------------------------------------------------------------- */
 
     template<class RecordType>
-    EquilContainer<RecordType>::EquilContainer(const DeckKeyword& keyword, const Phases& phases)
+    EquilContainer<RecordType>::EquilContainer(const DeckKeyword& keyword, const Phases& phases, bool compositional)
     {
         int region = 0;
         for (const auto& record : keyword) {
-            this->m_records.emplace_back(record, phases, ++region, keyword.location());
+            this->m_records.emplace_back(record, phases, ++region, keyword.location(), compositional);
         }
     }
 

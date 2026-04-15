@@ -33,7 +33,7 @@ namespace Opm {
     {
     public:
         EclipseConfig() = default;
-        EclipseConfig(const Deck& deck, const Phases& phases);
+        EclipseConfig(const Deck& deck, const Phases& phases, bool compositional);
         EclipseConfig(const InitConfig& initConfig,
                       const FIPConfig& fip_conf,
                       const IOConfig& io_conf);

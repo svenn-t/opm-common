@@ -26,8 +26,8 @@
 
 namespace Opm {
 
-    EclipseConfig::EclipseConfig(const Deck& deck, const Phases& phases) :
-        m_initConfig(deck, phases),
+    EclipseConfig::EclipseConfig(const Deck& deck, const Phases& phases, bool compositional) :
+        m_initConfig(deck, phases, compositional),
         fip_config(deck),
         io_config(deck)
     {
