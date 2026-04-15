@@ -69,7 +69,7 @@ namespace Opm {
 
     InitConfig::InitConfig(const Deck& deck, const Phases& phases, bool compositional)
         : equil        { equils(deck, phases, compositional) }
-        , stress_equil { stressequils(deck), phases, compositional } // TODO: we do not support this one yet, so it should throw
+        , stress_equil { stressequils(deck), phases, compositional }
         , foamconfig   { deck }
         , m_filleps    { PROPSSection{deck}.hasKeyword(ParserKeywords::FILLEPS::keywordName) }
         , m_gravity    { ! deck.hasKeyword<ParserKeywords::NOGRAV>() }

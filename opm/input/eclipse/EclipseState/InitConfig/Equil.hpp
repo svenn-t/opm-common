@@ -67,9 +67,12 @@ namespace Opm {
             bool live_oil_init_proc = false;
             bool wet_gas_init_proc = false;
             int init_target_accuracy = 0;
-            int comp_init_type = 0; // only for compositional modeling
-            // whether to set the field pressure to saturation pressure at the contact if comp_init_type is 2 or 3
-            bool set_to_saturaion_pressure = true; // only for compositional modeling
+            /// Item 10 – Compositional initialization type (compositional only).
+            int comp_init_type = 0;
+            /// Item 11 – Whether to set the field pressure to the saturation
+            /// pressure at the contact depth.  Only relevant when
+            /// comp_init_type is 2 or 3 (compositional only).
+            bool set_to_saturaion_pressure = true;
             bool humid_gas_init_proc = false;
     };
 
