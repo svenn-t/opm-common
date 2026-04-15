@@ -55,6 +55,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -611,6 +612,18 @@ namespace {
         };
     }
 
+    int maxGroupSize(const Opm::Schedule& sched,
+                     const int            report_step,
+                     const std::size_t    lookup_step,
+                     const std::string_view lgr_tag)
+    {
+        if (lgr_tag.empty() || (lgr_tag == "GLOBAL")) {
+            return (report_step == 0) ? 0 : Opm::maxGroupSize(sched, lookup_step);
+        }
+
+        return 1;
+    }
+
 } // Anonymous
 
 // #####################################################################
@@ -628,8 +641,8 @@ createInteHead(const EclipseState& es,
                const int           lookup_step)
 {
 
-    const auto nwgmax = (report_step == 0)
-        ? 0 : maxGroupSize(sched, lookup_step);
+    const auto nwgmax = ::maxGroupSize(sched, report_step, lookup_step,
+                                      grid.get_lgr_tag());
     const auto ngmax  = (report_step == 0)
         ? 0 : numGroupsInField(sched, lookup_step, grid.get_lgr_tag());
 
