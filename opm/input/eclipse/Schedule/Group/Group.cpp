@@ -775,6 +775,7 @@ const Group::GroupType& Group::getGroupType() const
 bool Group::isProductionGroup() const
 {
     return this->hasType(GroupType::PRODUCTION)
+        || this->m_is_slave_production_group
         || (this->m_gpmaint.has_value() &&
             this->m_gpmaint->flow_target() == GPMaint::FlowTarget::RESV_PROD);
 }
@@ -782,6 +783,7 @@ bool Group::isProductionGroup() const
 bool Group::isInjectionGroup() const
 {
     return this->hasType(GroupType::INJECTION)
+        || this->m_is_slave_injection_group
         || (this->m_gpmaint.has_value() &&
             this->m_gpmaint->flow_target() != GPMaint::FlowTarget::RESV_PROD);
 }
@@ -1540,6 +1542,8 @@ bool Group::operator==(const Group& data) const
         && (this->injection_properties == data.injection_properties)
         && (this->m_gpmaint == data.m_gpmaint)
         && (this->productionProperties() == data.productionProperties())
+        && (this->m_is_slave_production_group == data.m_is_slave_production_group)
+        && (this->m_is_slave_injection_group == data.m_is_slave_injection_group)
         ;
 }
 
