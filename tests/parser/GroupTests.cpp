@@ -1314,3 +1314,55 @@ GCONPROD
 
     BOOST_CHECK(sched[0].has_gpmaint());
 }
+
+// ============================================================
+// Tests for reservoir coupling Schedule update methods
+// ============================================================
+
+BOOST_AUTO_TEST_CASE(MarkSlaveProductionGroup)
+{
+    auto sched = create_schedule(R"(
+START
+31 AUG 1993 /
+SCHEDULE
+GRUPTREE
+  'PLAT-A' 'FIELD' /
+/
+TSTEP
+  1 /
+)");
+
+    const auto& grp_before = sched.getGroup("PLAT-A", 0);
+    BOOST_CHECK(!grp_before.isProductionGroup());
+
+    sched.markSlaveProductionGroup(0, "PLAT-A");
+
+    const auto& grp_after = sched.getGroup("PLAT-A", 0);
+    BOOST_CHECK(grp_after.isProductionGroup());
+    // No GCONPROD -> has_control should still be false
+    BOOST_CHECK(!grp_after.has_control(Group::ProductionCMode::ORAT));
+}
+
+BOOST_AUTO_TEST_CASE(MarkSlaveInjectionGroup)
+{
+    auto sched = create_schedule(R"(
+START
+31 AUG 1993 /
+SCHEDULE
+GRUPTREE
+  'PLAT-A' 'FIELD' /
+/
+TSTEP
+  1 /
+)");
+
+    const auto& grp_before = sched.getGroup("PLAT-A", 0);
+    BOOST_CHECK(!grp_before.isInjectionGroup());
+
+    sched.markSlaveInjectionGroup(0, "PLAT-A");
+
+    const auto& grp_after = sched.getGroup("PLAT-A", 0);
+    BOOST_CHECK(grp_after.isInjectionGroup());
+    // No GCONINJE -> hasInjectionControl should still be false
+    BOOST_CHECK(!grp_after.hasInjectionControl(Phase::WATER));
+}

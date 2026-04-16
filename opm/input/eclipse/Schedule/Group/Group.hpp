@@ -306,6 +306,16 @@ public:
     bool isInjectionGroup() const;
     void setProductionGroup();
     void setInjectionGroup();
+
+    /// Mark this group as a reservoir coupling slave group that receives
+    /// production targets from the master.  Makes isProductionGroup()
+    /// return true without requiring a GCONPROD entry in the slave deck.
+    void setSlaveProductionGroup() { this->m_is_slave_production_group = true; }
+
+    /// Mark this group as a reservoir coupling slave group that receives
+    /// injection targets from the master.  Makes isInjectionGroup()
+    /// return true without requiring a GCONINJE entry in the slave deck.
+    void setSlaveInjectionGroup() { this->m_is_slave_injection_group = true; }
     double getGroupEfficiencyFactor(bool network = false) const;
     bool useEfficiencyInNetwork() const;
 
@@ -389,6 +399,8 @@ public:
         serializer(production_properties);
         serializer(m_topup_phase);
         serializer(m_gpmaint);
+        serializer(m_is_slave_production_group);
+        serializer(m_is_slave_injection_group);
     }
 
 private:
@@ -414,6 +426,12 @@ private:
     std::optional<Phase> m_topup_phase{};
     std::optional<GPMaint> m_gpmaint{};
     std::optional<std::string> m_choke_group{};
+
+    // Reservoir coupling: slave groups receiving master targets.
+    // These flags make isProductionGroup()/isInjectionGroup() return true
+    // without requiring GCONPROD/GCONINJE in the slave deck.
+    bool m_is_slave_production_group{false};
+    bool m_is_slave_injection_group{false};
 };
 
 Group::GroupType operator |(Group::GroupType lhs, Group::GroupType rhs);

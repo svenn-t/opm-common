@@ -502,6 +502,14 @@ namespace Opm {
         friend std::ostream& operator<<(std::ostream& os, const Schedule& sched);
         void dump_deck(std::ostream& os) const;
 
+        /// Mark a slave group as receiving production targets from the master.
+        /// Makes isProductionGroup() return true without GCONPROD.
+        void markSlaveProductionGroup(std::size_t report_step, const std::string& group_name);
+
+        /// Mark a slave group as receiving injection targets from the master.
+        /// Makes isInjectionGroup() return true without GCONINJE.
+        void markSlaveInjectionGroup(std::size_t report_step, const std::string& group_name);
+
     private:
         friend class HandlerContext;
 

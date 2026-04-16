@@ -3067,6 +3067,26 @@ void Schedule::dump_deck(std::ostream& os) const
     this->m_sched_deck.dump_deck(os, this->getUnits());
 }
 
+void Schedule::markSlaveProductionGroup(const std::size_t report_step,
+                                        const std::string& group_name)
+{
+    auto grp = this->snapshots[report_step].groups(group_name);
+    if (!grp.isProductionGroup()) {
+        grp.setSlaveProductionGroup();
+        this->snapshots[report_step].groups.update(std::move(grp));
+    }
+}
+
+void Schedule::markSlaveInjectionGroup(const std::size_t report_step,
+                                       const std::string& group_name)
+{
+    auto grp = this->snapshots[report_step].groups(group_name);
+    if (!grp.isInjectionGroup()) {
+        grp.setSlaveInjectionGroup();
+        this->snapshots[report_step].groups.update(std::move(grp));
+    }
+}
+
 std::ostream& operator<<(std::ostream& os, const Schedule& sched)
 {
     sched.dump_deck(os);
