@@ -22,11 +22,24 @@
 #include <opm/input/eclipse/EclipseState/EclipseConfig.hpp>
 #include <opm/input/eclipse/EclipseState/InitConfig/InitConfig.hpp>
 #include <opm/input/eclipse/EclipseState/IOConfig/IOConfig.hpp>
+#include <opm/input/eclipse/EclipseState/Runspec.hpp>
 
 
 namespace Opm {
 
-    EclipseConfig::EclipseConfig(const Deck& deck, const Phases& phases, bool compositional) :
+    EclipseConfig::EclipseConfig(const Deck& deck)
+        : EclipseConfig { deck, Runspec{ deck } }
+    {}
+
+    EclipseConfig::EclipseConfig(const Deck& deck, const Runspec& rspec)
+        : EclipseConfig { deck, rspec.phases(), rspec.compositionalMode() }
+    {}
+
+    EclipseConfig::EclipseConfig(const Deck& deck, const Phases& phases)
+        : EclipseConfig { deck, phases, /* compositional = */ false }
+    {}
+
+    EclipseConfig::EclipseConfig(const Deck& deck, const Phases& phases, const bool compositional) :
         m_initConfig(deck, phases, compositional),
         fip_config(deck),
         io_config(deck)

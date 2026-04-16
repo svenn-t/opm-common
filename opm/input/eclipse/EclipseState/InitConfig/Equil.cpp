@@ -16,6 +16,15 @@
 
 #include <fmt/core.h>
 
+namespace {
+
+int targetAccuracy(const Opm::DeckItem& N, const bool compositional)
+{
+    return (compositional && N.defaultApplied(0)) ? 0 : N.get<int>(0);
+}
+
+} // anonymous namespace
+
 namespace Opm {
     EquilRecord::EquilRecord(const double datum_depth_arg, const double datum_depth_pc_arg,
                              const double woc_depth      , const double woc_pc,
@@ -53,6 +62,7 @@ namespace Opm {
         , gas_oil_contact_capillary_pressure(record.getItem<ParserKeywords::EQUIL::PC_GOC>().getSIDouble(0))
         , live_oil_init_proc(record.getItem<ParserKeywords::EQUIL::BLACK_OIL_INIT>().get<int>(0) <= 0)
         , wet_gas_init_proc(record.getItem<ParserKeywords::EQUIL::BLACK_OIL_INIT_WG>().get<int>(0) <= 0)
+        , init_target_accuracy(targetAccuracy(record.getItem<ParserKeywords::EQUIL::OIP_INIT>(), compositional))
         , humid_gas_init_proc(record.getItem<ParserKeywords::EQUIL::BLACK_OIL_INIT_HG>().get<int>(0) <= 0)
     {
         const bool three_phases = phases.active(Phase::WATER) && phases.active(Phase::OIL) && phases.active(Phase::GAS);
@@ -63,16 +73,6 @@ namespace Opm {
                                                 "Depth of gas-oil contact ({}) is below depth of water-oil contact ({}).",
                                                 region, goc_depth_input, woc_depth_input);
             throw OpmInputError(msg, location);
-        }
-
-        if (record.getItem<ParserKeywords::EQUIL::OIP_INIT>().defaultApplied(0)) {
-            if (compositional) {
-                init_target_accuracy = 0;
-            } else {
-                init_target_accuracy = -5;
-            }
-        } else {
-            init_target_accuracy = record.getItem<ParserKeywords::EQUIL::OIP_INIT>().get<int>(0);
         }
 
         if (compositional) {

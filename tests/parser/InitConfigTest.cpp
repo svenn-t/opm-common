@@ -327,7 +327,8 @@ BOOST_AUTO_TEST_CASE(InitConfigTest)
 {
     {
         const auto deck = createDeck(deckStr());
-        const InitConfig cfg(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+        const Runspec runspec{deck};
+        const InitConfig cfg(deck, runspec.phases(), runspec.compositionalMode());
         BOOST_CHECK_EQUAL(cfg.restartRequested(), true);
         BOOST_CHECK_EQUAL(cfg.getRestartStep(), 5);
         BOOST_CHECK_EQUAL(cfg.getRestartRootName(), "BASE");
@@ -335,7 +336,8 @@ BOOST_AUTO_TEST_CASE(InitConfigTest)
 
     {
         const Deck deck2 = createDeck(deckStr2());
-        InitConfig cfg2(deck2, Runspec(deck2).phases(), false);
+        const Runspec runspec2{deck2};
+        InitConfig cfg2(deck2, runspec2.phases(), runspec2.compositionalMode());
         BOOST_CHECK_EQUAL(cfg2.restartRequested(), false);
         BOOST_CHECK_EQUAL(cfg2.getRestartStep(), 0);
         BOOST_CHECK_EQUAL(cfg2.getRestartRootName(), "");
@@ -348,24 +350,28 @@ BOOST_AUTO_TEST_CASE(InitConfigTest)
 
     {
         const Deck deck3 = createDeck(deckStr3());
-        BOOST_CHECK_THROW(InitConfig(deck3, Runspec(deck3).phases(), false), OpmInputError);
+        const Runspec runspec3{deck3};
+        BOOST_CHECK_THROW(InitConfig(deck3, runspec3.phases(), runspec3.compositionalMode()), OpmInputError);
     }
 
     {
         const Deck deck3_seq0 = createDeck(deckStr3_seq0());
-        BOOST_CHECK_THROW(InitConfig(deck3_seq0, Runspec(deck3_seq0).phases(), false), OpmInputError);
+        const Runspec runspec3_seq0{deck3_seq0};
+        BOOST_CHECK_THROW(InitConfig(deck3_seq0, runspec3_seq0.phases(), runspec3_seq0.compositionalMode()), OpmInputError);
     }
 
     {
         const Deck deck4 = createDeck(deckStr4());
-        BOOST_CHECK_NO_THROW(InitConfig(deck4, Runspec(deck4).phases(), false));
+        const Runspec runspec4{deck4};
+        BOOST_CHECK_NO_THROW(InitConfig(deck4, runspec4.phases(), runspec4.compositionalMode()));
     }
 }
 
 BOOST_AUTO_TEST_CASE(InitConfigWithoutEquil)
 {
     const auto deck = createDeck(deckStr());
-    const InitConfig config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+    const Runspec runspec(deck);
+    const InitConfig config(deck, runspec.phases(), runspec.compositionalMode());
 
     BOOST_CHECK(! config.hasEquil());
     BOOST_CHECK_THROW(config.getEquil(), std::runtime_error);
@@ -374,7 +380,8 @@ BOOST_AUTO_TEST_CASE(InitConfigWithoutEquil)
 BOOST_AUTO_TEST_CASE(InitConfigWithEquil)
 {
     const auto deck = createDeck(deckWithEquil());
-    const InitConfig config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+    const Runspec runspec(deck);
+    const InitConfig config(deck, runspec.phases(), runspec.compositionalMode());
 
     BOOST_CHECK(config.hasEquil());
     BOOST_CHECK_NO_THROW(config.getEquil());
@@ -383,7 +390,8 @@ BOOST_AUTO_TEST_CASE(InitConfigWithEquil)
 BOOST_AUTO_TEST_CASE(InitConfigWithStrEquil)
 {
     const auto deck = createDeck(deckWithStrEquil());
-    const InitConfig config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+    const Runspec runspec(deck);
+    const InitConfig config(deck, runspec.phases(), runspec.compositionalMode());
 
     BOOST_CHECK(config.hasStressEquil());
     BOOST_CHECK_NO_THROW(config.getStressEquil());
@@ -392,13 +400,15 @@ BOOST_AUTO_TEST_CASE(InitConfigWithStrEquil)
 BOOST_AUTO_TEST_CASE(InitConfigWithCompositionalStrEquil)
 {
     const auto deck = createDeck(deckWithCompositionalStrEquil());
-    BOOST_CHECK_THROW(InitConfig(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode()), OpmInputError);
+    const Runspec runspec(deck);
+    BOOST_CHECK_THROW(InitConfig(deck, runspec.phases(), runspec.compositionalMode()), OpmInputError);
 }
 
 BOOST_AUTO_TEST_CASE(EquilOperations)
 {
     const auto deck = createDeck(deckWithEquil());
-    const InitConfig config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+    const Runspec runspec(deck);
+    const InitConfig config(deck, runspec.phases(), runspec.compositionalMode());
 
     const auto& equil = config.getEquil();
 
@@ -429,7 +439,8 @@ BOOST_AUTO_TEST_CASE(CompositionalEquilOperations)
     // Item 10: COMP_INIT_TYPE = 3
     // Item 11: COMP_NOT_SET_SAT_PRESSURE = 0 (=> setToSaturaionPressure = true)
     const auto deck = createDeck(deckWithCompositionalEquil());
-    const InitConfig config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+    const Runspec runspec(deck);
+    const InitConfig config(deck, runspec.phases(), runspec.compositionalMode());
 
     BOOST_CHECK(config.hasEquil());
     const auto& equil = config.getEquil();
@@ -460,7 +471,8 @@ BOOST_AUTO_TEST_CASE(CompositionalEquilOperations)
 BOOST_AUTO_TEST_CASE(StrEquilOperations)
 {
     const auto deck = createDeck(deckWithStrEquil());
-    const InitConfig config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+    const Runspec runspec(deck);
+    const InitConfig config(deck, runspec.phases(), runspec.compositionalMode());
 
     const auto& equil = config.getStressEquil();
 
@@ -509,25 +521,29 @@ BOOST_AUTO_TEST_CASE(RestartCWD)
 
     {
         const Deck deck = Parser{}.parseFile("simulation/CASE.DATA");
-        const InitConfig init_config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+        const Runspec runspec(deck);
+        const InitConfig init_config(deck, runspec.phases(), runspec.compositionalMode());
         BOOST_CHECK_EQUAL(init_config.getRestartRootName(), "simulation/BASE");
     }
 
     {
         const Deck deck = Parser{}.parseFile("simulation/CASE5.DATA");
-        const InitConfig init_config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+        const Runspec runspec(deck);
+        const InitConfig init_config(deck, runspec.phases(), runspec.compositionalMode());
         BOOST_CHECK_EQUAL(init_config.getRestartRootName(), "/abs/path/BASE");
     }
 
     {
         const Deck deck = Parser{}.parseFile("CWD_CASE.DATA");
-        const InitConfig init_config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+        const Runspec runspec(deck);
+        const InitConfig init_config(deck, runspec.phases(), runspec.compositionalMode());
         BOOST_CHECK_EQUAL(init_config.getRestartRootName(), "BASE");
     }
 
     {
         const Deck deck = Parser{}.parseFile("CASE5.DATA");
-        const InitConfig init_config(deck, Runspec(deck).phases(), Runspec(deck).compositionalMode());
+        const Runspec runspec(deck);
+        const InitConfig init_config(deck, runspec.phases(), runspec.compositionalMode());
         BOOST_CHECK_EQUAL(init_config.getRestartRootName(), "/abs/path/BASE");
     }
 }

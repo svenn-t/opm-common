@@ -133,7 +133,7 @@ namespace Opm {
     try
         : m_tables(            deck )
         , m_runspec(           deck )
-        , m_eclipseConfig(     deck, m_runspec.phases(), m_runspec.compositionalMode() )
+        , m_eclipseConfig(     deck, m_runspec )
         , m_deckUnitSystem(    deck.getActiveUnitSystem() )
         , m_inputGrid(         deck, nullptr )
         , m_inputNnc(          m_inputGrid, deck)
