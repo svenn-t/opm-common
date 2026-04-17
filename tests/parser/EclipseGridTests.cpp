@@ -3532,3 +3532,305 @@ PORO
     SPIDER with DR/DRV, DTHETA/DTHETAV, DZ/DZV and TOPS creates a spider grid)");
     });
 }
+
+
+BOOST_AUTO_TEST_CASE(TEST_GDFILE_1_ADDZCORN) {
+
+    const auto deckDataBase = std::string { R"(RUNSPEC
+
+    DIMENS
+    2 2 2 /
+    GRID
+    SPECGRID
+    2 2 2 1 F /
+    COORD
+    2002.0000  2002.0000   100.0000   1999.8255  1999.9127   108.4935
+    2011.9939  2000.0000   100.3490   2009.8194  1999.9127   108.8425
+    2015.9878  2000.0000   100.6980   2019.8133  1999.9127   109.1915
+    2000.0000  2009.9985   100.1745   1999.8255  2009.9112   108.6681 
+    2010.9939  2011.9985   100.5235   2009.8194  2009.9112   109.0170
+    2019.9878  2009.9985   100.8725   2019.8133  2009.9112   109.3660
+    2005.0000  2019.9970   100.3490   1999.8255  2019.9097   108.8426
+    2009.9939  2019.9970   100.6980   2009.8194  2019.9097   109.1916
+    2016.9878  2019.9970   101.0470   2019.8133  2019.9097   109.5406 /
+    ZCORN
+    98.0000   100.3490    97.3490   100.6980   100.1745   100.5235
+    100.5235   100.8725   100.1745   100.5235   100.5235   100.8725
+    100.3490   101.6980   101.6980   102.5470   102.4973   102.1463
+    103.2463   104.1953   103.6719   104.0209   104.0209   104.3698
+    103.6719   104.0209   104.0209   104.3698   103.8464   104.1954
+    104.1954   104.5444   103.4973   103.8463   103.8463   104.1953
+    103.6719   104.0209   104.0209   104.3698   103.6719   104.0209
+    104.0209   104.3698   103.8464   104.1954   104.1954   104.5444
+    108.4935   108.8425   108.8425   109.1915   108.6681   109.0170
+    109.0170   109.3660   108.6681   109.0170   109.0170   109.3660
+    108.8426   109.1916   109.1916   109.5406  /
+
+    ACTNUM
+    1 1 1 1 0 1 0 1 /
+    )" };
+
+    Opm::Parser parser;
+    auto deck_base = parser.parseString(deckDataBase);
+    Opm::EclipseGrid grid_base(deck_base);
+    auto zcorn_base = grid_base.getZCORN();
+    {
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            1.0 1 2 1 2 1 2 1 2 1 2/
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+        auto zcorn = grid1.getZCORN();
+        // all zcorns are moved 1.0
+        for (int i = 0; i < 64; i++) {
+            BOOST_CHECK_CLOSE( zcorn_base[i] + 1.0, zcorn[i], 1e-8);
+        }
+    }
+
+    {
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            1.0 0 1 0 1 1 1 0 1 0 1/
+            -1.0 1 0 1 0 2 2 1 0 1 0/
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+        const auto zcorn = grid1.getZCORN();
+        for (int i = 0; i < 64; i++) {
+            if (i == 1 || i == 17) { // move right front corner of cell 1, 1 m
+                BOOST_CHECK_CLOSE(zcorn_base[i] + 1.0, zcorn[i], 1e-8);
+            } else if (i == 36 || i == 52) { // move left back corner of cell 2, -1m
+                BOOST_CHECK_CLOSE(zcorn_base[i] - 1.0, zcorn[i], 1e-8);
+            } else {
+                BOOST_CHECK_CLOSE(zcorn_base[i], zcorn[i], 1e-8);
+            }
+        }
+    }
+    {
+        // Move one full cell box (cell i=1,j=1,k=1) with explicit discontinuity flags.
+        // This should only move that cell's 8 ZCORN entries.
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            2.0 1 1 1 1 1 1 1 1 1 1 /
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+
+        const auto zcorn = grid1.getZCORN();
+
+        auto zmap = grid1.zcornMapper();
+        std::vector<char> moved(64, 0);
+        for (int c = 0; c < 8; ++c) {
+            moved[zmap.index(0, 0, 0, c)] = 1;
+        }
+
+        for (int i = 0; i < 64; ++i) {
+            if (moved[i]) {
+                BOOST_CHECK_CLOSE(zcorn_base[i] + 2.0, zcorn[i], 1e-8);
+            } else {
+                BOOST_CHECK_CLOSE(zcorn_base[i], zcorn[i], 1e-8);
+            }
+        }
+    }
+
+    {
+        // Same single-corner operation repeated twice -> cumulative effect.
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            1.0 0 1 0 1 1 1 0 1 0 1 /
+            0.5 0 1 0 1 1 1 0 1 0 1 /
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+
+        const auto zcorn = grid1.getZCORN();
+
+        for (int i = 0; i < 64; ++i) {
+            if (i == 1 || i == 17) { // same corner as in your existing test
+                BOOST_CHECK_CLOSE(zcorn_base[i] + 1.5, zcorn[i], 1e-8);
+            } else {
+                BOOST_CHECK_CLOSE(zcorn_base[i], zcorn[i], 1e-8);
+            }
+        }
+    }
+
+    {
+        // Whole-grid move in two records -> cumulative everywhere.
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            1.0 1 2 1 2 1 2 1 2 1 2 /
+            -0.25 1 2 1 2 1 2 1 2 1 2 /
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+
+        const auto zcorn = grid1.getZCORN();
+
+        for (int i = 0; i < 64; ++i) {
+            BOOST_CHECK_CLOSE(zcorn_base[i] + 0.75, zcorn[i], 1e-8);
+        }
+    }
+
+    {
+        // TOP action should only move the top four corners of the selected cell.
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            2.0 1 1 1 1 1 1 1 1 1 1 TOP /
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+
+        const auto zcorn = grid1.getZCORN();
+
+        auto zmap = grid1.zcornMapper();
+        std::vector<char> moved(zcorn.size(), 0);
+        for (int c = 0; c < 4; ++c) {
+            moved[zmap.index(0, 0, 0, c)] = 1;
+        }
+
+        for (std::size_t i = 0; i < zcorn.size(); ++i) {
+            if (moved[i]) {
+                BOOST_CHECK_CLOSE(zcorn_base[i] + 2.0, zcorn[i], 1e-8);
+            } else {
+                BOOST_CHECK_CLOSE(zcorn_base[i], zcorn[i], 1e-8);
+            }
+        }
+    }
+
+    {
+        // BOTTOM action should only move the bottom four corners of the selected cell.
+        const auto test1 = std::string {
+            R"(ADDZCORN
+            2.0 1 1 1 1 1 1 1 1 1 1 BOTTOM /
+            /
+            )"
+        };
+
+        const auto deckData1 = deckDataBase + test1;
+        auto deck1 = parser.parseString(deckData1);
+        Opm::EclipseGrid grid1(deck1);
+
+        const auto zcorn = grid1.getZCORN();
+
+        auto zmap = grid1.zcornMapper();
+        std::vector<char> moved(zcorn.size(), 0);
+        for (int c = 4; c < 8; ++c) {
+            moved[zmap.index(0, 0, 0, c)] = 1;
+        }
+
+        for (std::size_t i = 0; i < zcorn.size(); ++i) {
+            if (moved[i]) {
+                BOOST_CHECK_CLOSE(zcorn_base[i] + 2.0, zcorn[i], 1e-8);
+            } else {
+                BOOST_CHECK_CLOSE(zcorn_base[i], zcorn[i], 1e-8);
+            }
+        }
+    }
+
+    {
+        // Compare discontinuous vs continuous move on the same single-cell box.
+        // Continuity on +I and +J should move additional shared corners.
+        const auto test_discont = std::string { R"(ADDZCORN
+            1.0 1 1 1 1 1 1 1 1 1 1 /
+            /
+            )"
+        };
+
+        const auto test_cont = std::string { R"(ADDZCORN
+            1.0 1 1 1 1 1 1 1 2 1 2 /
+            /
+            )"
+        };
+
+        // Discontinuous case
+        auto deck_discont = parser.parseString(deckDataBase + test_discont);
+        Opm::EclipseGrid grid_discont(deck_discont);
+        const auto z1_discont = grid_discont.getZCORN();
+
+        // Continuous case
+        auto deck_cont = parser.parseString(deckDataBase + test_cont);
+        Opm::EclipseGrid grid_cont(deck_cont);
+        const auto z1_cont = grid_cont.getZCORN();
+
+        BOOST_REQUIRE_EQUAL(zcorn_base.size(), z1_discont.size());
+        BOOST_REQUIRE_EQUAL(zcorn_base.size(), z1_cont.size());
+        BOOST_REQUIRE_EQUAL(z1_discont.size(), z1_cont.size());
+
+        std::vector<char> changed_discont(z1_discont.size(), 0);
+        std::vector<char> changed_cont(z1_cont.size(), 0);
+
+        std::size_t n_changed_discont = 0;
+        std::size_t n_changed_cont = 0;
+        constexpr double eps = 1e-12;
+
+        for (std::size_t i = 0; i < z1_discont.size(); ++i) {
+            if (std::abs(z1_discont[i] - zcorn_base[i]) > eps) {
+                changed_discont[i] = 1;
+                ++n_changed_discont;
+            }
+            if (std::abs(z1_cont[i] - zcorn_base[i]) > eps) {
+                changed_cont[i] = 1;
+                ++n_changed_cont;
+            }
+        }
+
+        // Continuous move must affect strictly more corners than discontinuous.
+        BOOST_CHECK_GT(n_changed_cont, n_changed_discont);
+
+        // Everything moved in discontinuous case must also move in continuous case.
+        for (std::size_t i = 0; i < changed_discont.size(); ++i) {
+            if (changed_discont[i]) {
+                BOOST_CHECK(changed_cont[i]);
+            }
+        }
+
+        // And continuity should move at least one corner in each neighbor (+I and +J).
+        auto zmap = grid_cont.zcornMapper();
+
+        bool moved_in_i_neighbor = false;
+        for (int c = 0; c < 8; ++c) {
+            const auto idx = zmap.index(1, 0, 0, c); // cell (i=2,j=1,k=1) in 1-based terms
+            if (changed_cont[idx] && !changed_discont[idx]) {
+                moved_in_i_neighbor = true;
+                break;
+            }
+        }
+
+        bool moved_in_j_neighbor = false;
+        for (int c = 0; c < 8; ++c) {
+            const auto idx = zmap.index(0, 1, 0, c); // cell (i=1,j=2,k=1) in 1-based terms
+            if (changed_cont[idx] && !changed_discont[idx]) {
+                moved_in_j_neighbor = true;
+                break;
+            }
+        }
+
+        BOOST_CHECK(moved_in_i_neighbor);
+        BOOST_CHECK(moved_in_j_neighbor);
+    }
+}

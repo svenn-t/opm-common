@@ -442,6 +442,7 @@ namespace Opm {
         void save_nna(Opm::EclIO::EclOutput& egridfile, const std::vector<Opm::NNCdata>& nnc, std::size_t grid1, std::size_t grid2) const;
         void save_core(Opm::EclIO::EclOutput& egridfile, const Opm::UnitSystem& units) const;
 
+        void addZCORN(const Deck& deck);
     };
 
     /// Specialized Class to describe LGR refined cells.
@@ -554,6 +555,10 @@ namespace Opm {
 
     class ZcornMapper {
     public:
+        struct AddZCornInput {
+            double value;
+            std::size_t index;
+        };
         ZcornMapper(size_t nx, size_t ny, size_t nz);
         size_t index(size_t i, size_t j, size_t k, int c) const;
         size_t index(size_t g, int c) const;
@@ -576,6 +581,8 @@ namespace Opm {
         */
         size_t fixupZCORN( std::vector<double>& zcorn);
         bool validZCORN( const std::vector<double>& zcorn) const;
+        void addZCORN( std::vector<double>& zcorn, const std::vector<AddZCornInput>& addzcorns) const;
+
     private:
         std::array<size_t,3> dims;
         std::array<size_t,3> stride;
