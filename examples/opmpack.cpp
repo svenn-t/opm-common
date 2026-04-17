@@ -167,7 +167,8 @@ int main(int argc, char** argv)
 
         const auto& deck = pack_deck(argv[arg_offset], os);
         if (copy_binary) {
-            Opm::InitConfig init_config(deck, Opm::Runspec(deck).phases());
+            const Opm::Runspec runspec(deck);
+            Opm::InitConfig init_config(deck, runspec.phases(), runspec.compositionalMode());
             if (init_config.restartRequested()) {
                 Opm::IOConfig io_config(deck);
                 fs::path restart_file(io_config.getRestartFileName( init_config.getRestartRootName(), init_config.getRestartStep(), false ));

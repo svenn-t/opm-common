@@ -68,17 +68,18 @@
       "name": "OIP_INIT",
       "value_type": "INT",
       "default": -5,
-      "comment": "Only values less than or equal to zero supported"
+      "comment": "Defaults: -5 (black-oil), 0 (compositional)"
     },
     {
       "item": 10,
-      "name": "EQLOPT04",
+      "name": "COMP_INIT_TYPE",
       "value_type": "INT",
+      "default": 1,
       "comment": "This item is ECLIPSE300 specific"
     },
     {
       "item": 11,
-      "name": "EQLOPT5",
+      "name": "COMP_NOT_SET_SAT_PRESSURE",
       "value_type": "INT",
       "comment": "This item is ECLIPSE300 specific"
     },
