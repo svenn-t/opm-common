@@ -52,6 +52,9 @@ inline std::string prefix() {
 
 BOOST_AUTO_TEST_CASE( Brine ) {
     const char *deckData =
+        "BRINE\n"
+        "/\n"
+        "\n"
         "TABDIMS\n"
         "1 1/\n"
         "\n"

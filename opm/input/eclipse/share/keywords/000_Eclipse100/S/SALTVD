@@ -4,6 +4,9 @@
   "sections": [
     "SOLUTION"
   ],
+  "requires": [
+    "BRINE"
+  ],
   "size": {
     "keyword": "EQLDIMS",
     "item": "NTEQUL"

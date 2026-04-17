@@ -3,6 +3,9 @@
   "sections": [
     "SOLUTION"
   ],
+  "requires": [
+    "BRINE"
+  ],
   "size": 1,
   "items": [
     {
