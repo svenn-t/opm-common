@@ -462,7 +462,7 @@ namespace {
         explicit PLTSegmentPhaseVelocity(const std::size_t nseg = 0);
 
         void addSegment(const ::Opm::UnitSystem&    usys,
-                        const ::Opm::data::Segment& segSol);
+                        const ::Opm::data::Segment* segSol);
 
     private:
         [[nodiscard]] Opm::UnitSystem::measure oilUnit() const override
@@ -480,18 +480,25 @@ namespace {
     {}
 
     void PLTSegmentPhaseVelocity::addSegment(const ::Opm::UnitSystem&    usys,
-                                             const ::Opm::data::Segment& segSol)
+                                             const ::Opm::data::Segment* segSol)
     {
-        using Ix = ::Opm::data::SegmentPhaseQuantity::Item;
+        if (segSol == nullptr) {
+            this->addOil  (usys, 0.0);
+            this->addGas  (usys, 0.0);
+            this->addWater(usys, 0.0);
+        }
+        else {
+            using Ix = ::Opm::data::SegmentPhaseQuantity::Item;
 
-        auto velocityValue = [&segSol](const Ix i)
-        {
-            return segSol.velocity.has(i) ? -segSol.velocity.get(i) : 0.0;
-        };
+            auto velocityValue = [&vel = segSol->velocity](const Ix i)
+            {
+                return vel.has(i) ? -vel.get(i) : 0.0;
+            };
 
-        this->addOil  (usys, velocityValue(Ix::Oil));
-        this->addGas  (usys, velocityValue(Ix::Gas));
-        this->addWater(usys, velocityValue(Ix::Water));
+            this->addOil  (usys, velocityValue(Ix::Oil));
+            this->addGas  (usys, velocityValue(Ix::Gas));
+            this->addWater(usys, velocityValue(Ix::Water));
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -502,7 +509,7 @@ namespace {
         explicit PLTSegmentPhaseHoldupFraction(const std::size_t nseg = 0);
 
         void addSegment(const ::Opm::UnitSystem&    usys,
-                        const ::Opm::data::Segment& segSol);
+                        const ::Opm::data::Segment* segSol);
 
     private:
         [[nodiscard]] Opm::UnitSystem::measure oilUnit() const override
@@ -520,18 +527,26 @@ namespace {
     {}
 
     void PLTSegmentPhaseHoldupFraction::addSegment(const ::Opm::UnitSystem&    usys,
-                                                   const ::Opm::data::Segment& segSol)
+                                                   const ::Opm::data::Segment* segSol)
     {
-        using Ix = ::Opm::data::SegmentPhaseQuantity::Item;
+        if (segSol == nullptr) {
+            // Note: HF oil = 1 when not flowing.
+            this->addOil  (usys, 1.0);
+            this->addGas  (usys, 0.0);
+            this->addWater(usys, 0.0);
+        }
+        else {
+            using Ix = ::Opm::data::SegmentPhaseQuantity::Item;
 
-        auto holdupValue = [&segSol](const Ix i)
-        {
-            return segSol.holdup.has(i) ? segSol.holdup.get(i) : 0.0;
-        };
+            auto holdupValue = [&hf = segSol->holdup](const Ix i)
+            {
+                return hf.has(i) ? hf.get(i) : 0.0;
+            };
 
-        this->addOil  (usys, holdupValue(Ix::Oil));
-        this->addGas  (usys, holdupValue(Ix::Gas));
-        this->addWater(usys, holdupValue(Ix::Water));
+            this->addOil  (usys, holdupValue(Ix::Oil));
+            this->addGas  (usys, holdupValue(Ix::Gas));
+            this->addWater(usys, holdupValue(Ix::Water));
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -542,7 +557,7 @@ namespace {
         explicit PLTSegmentPhaseViscosity(const std::size_t nseg = 0);
 
         void addSegment(const ::Opm::UnitSystem&    usys,
-                        const ::Opm::data::Segment& segSol);
+                        const ::Opm::data::Segment* segSol);
 
     private:
         [[nodiscard]] Opm::UnitSystem::measure oilUnit() const override
@@ -560,18 +575,25 @@ namespace {
     {}
 
     void PLTSegmentPhaseViscosity::addSegment(const ::Opm::UnitSystem&    usys,
-                                              const ::Opm::data::Segment& segSol)
+                                              const ::Opm::data::Segment* segSol)
     {
-        using Ix = ::Opm::data::SegmentPhaseQuantity::Item;
+        if (segSol == nullptr) {
+            this->addOil  (usys, 0.0);
+            this->addGas  (usys, 0.0);
+            this->addWater(usys, 0.0);
+        }
+        else {
+            using Ix = ::Opm::data::SegmentPhaseQuantity::Item;
 
-        auto viscosityValue = [&segSol](const Ix i)
-        {
-            return segSol.viscosity.has(i) ? segSol.viscosity.get(i) : 0.0;
-        };
+            auto viscosityValue = [&mu = segSol->viscosity](const Ix i)
+            {
+                return mu.has(i) ? mu.get(i) : 0.0;
+            };
 
-        this->addOil  (usys, viscosityValue(Ix::Oil));
-        this->addGas  (usys, viscosityValue(Ix::Gas));
-        this->addWater(usys, viscosityValue(Ix::Water));
+            this->addOil  (usys, viscosityValue(Ix::Oil));
+            this->addGas  (usys, viscosityValue(Ix::Gas));
+            this->addWater(usys, viscosityValue(Ix::Water));
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1170,7 +1192,7 @@ namespace {
         void addSegment(const ::Opm::UnitSystem&    usys,
                         const ::Opm::WellSegments&  segments,
                         const ::Opm::Segment&       segment,
-                        const ::Opm::data::Segment& segSol);
+                        const ::Opm::data::Segment* segSol);
 
         void recordPhysicalLocation(const ::Opm::UnitSystem&   usys,
                                     const ::Opm::WellSegments& segments,
@@ -1182,7 +1204,7 @@ namespace {
                                      const ::Opm::Segment& segment);
 
         void recordDynamicState(const ::Opm::UnitSystem&    usys,
-                                const ::Opm::data::Segment& segSol);
+                                const ::Opm::data::Segment* segSol);
 
         void recordAutoICDTypeProperties(const ::Opm::UnitSystem& usys,
                                          const ::Opm::Segment& segment);
@@ -1262,12 +1284,13 @@ namespace {
         const auto& xseg = wellSol.segments;
 
         for (const auto& segment : segments) {
-            auto segSolPos = xseg.find(segment.segmentNumber());
-            if (segSolPos == xseg.end()) {
-                continue;
-            }
+            const auto segSolPos = xseg.find(segment.segmentNumber());
 
-            this->addSegment(usys, segments, segment, segSolPos->second);
+            const auto* segSol = (segSolPos == xseg.end())
+                ? nullptr
+                : &segSolPos->second;
+
+            this->addSegment(usys, segments, segment, segSol);
         }
 
         if (this->nSeg() > std::size_t{0}) {
@@ -1308,7 +1331,7 @@ namespace {
     void SegmentRecord::addSegment(const ::Opm::UnitSystem&   usys,
                                    const ::Opm::WellSegments& segments,
                                    const ::Opm::Segment&      segment,
-                                   const Opm::data::Segment&  segSol)
+                                   const Opm::data::Segment*  segSol)
     {
         this->recordPhysicalLocation(usys, segments, segment);
         this->recordSegmentConnectivity(segment);
@@ -1355,11 +1378,7 @@ namespace {
     void SegmentRecord::recordSegmentProperties(const ::Opm::UnitSystem& usys,
                                                 const ::Opm::Segment&    segment)
     {
-        using TypeProperties = void(SegmentRecord::*)
-            (const ::Opm::UnitSystem& usys,
-             const ::Opm::Segment&    segment);
-
-        static const auto handlers = std::array<TypeProperties, 4> {
+        static const auto handlers = std::array {
             &SegmentRecord::recordRegularTypeProperties,
             &SegmentRecord::recordSpiralICDTypeProperties,
             &SegmentRecord::recordAutoICDTypeProperties,
@@ -1377,13 +1396,27 @@ namespace {
     }
 
     void SegmentRecord::recordDynamicState(const ::Opm::UnitSystem&    usys,
-                                           const ::Opm::data::Segment& segSol)
+                                           const ::Opm::data::Segment* segSol)
     {
-        using M = ::Opm::UnitSystem::measure;
-        using SegPress = ::Opm::data::SegmentPressures::Value;
+        {
+            using M = ::Opm::UnitSystem::measure;
+            using SegPress = ::Opm::data::SegmentPressures::Value;
 
-        this->pressure_.push_back(usys.from_si(M::pressure, segSol.pressures[SegPress::Pressure]));
-        this->rate_.addConnection(usys, segSol.rates);
+            const auto segpress = (segSol == nullptr)
+                ? 0.0
+                : segSol->pressures[SegPress::Pressure];
+
+            this->pressure_.push_back(usys.from_si(M::pressure, segpress));
+        }
+
+        {
+            const auto& rates = (segSol == nullptr)
+                ? ::Opm::data::Rates{}
+                : segSol->rates;
+
+            this->rate_.addConnection(usys, rates);
+        }
+
         this->velocity_.addSegment(usys, segSol);
         this->holdup_fraction_.addSegment(usys, segSol);
         this->viscosity_.addSegment(usys, segSol);

@@ -4356,11 +4356,28 @@ END
         return xw;
     }
 
+    ::Opm::data::Well wellSol_P1_NoSegFlow(const ::Opm::EclipseGrid& grid)
+    {
+        auto xw = ::Opm::data::Well{};
+        xw.connections = connRes_P1(grid);
+
+        return xw;
+    }
+
     ::Opm::data::Wells wellSol(const ::Opm::EclipseGrid& grid)
     {
         auto xw = ::Opm::data::Wells{};
 
         xw["P1"] = wellSol_P1(grid);
+
+        return xw;
+    }
+
+    ::Opm::data::Wells wellSol_NoSegFlow(const ::Opm::EclipseGrid& grid)
+    {
+        auto xw = ::Opm::data::Wells{};
+
+        xw["P1"] = wellSol_P1_NoSegFlow(grid);
 
         return xw;
     }
@@ -4385,6 +4402,38 @@ END
 
             ::Opm::RftIO::write(reportStep, elapsed, model.es.getUnits(),
                                 grid, model.sched, wellSol(grid), rftFile);
+        }
+
+        const auto rft = ::Opm::EclIO::ERft {
+            ::Opm::EclIO::OutputStream::outputFileName(rset, "RFT")
+        };
+
+        return SegmentResults {
+            rft, "P1", RftDate{ 2000, 1, 2 }
+        };
+    }
+
+    SegmentResults readWriteSegmentRFTDataNoSegFlow(std::function<Opm::Deck()> dataSet = &segmentDataSet,
+                                                    const std::string&         caseName = "TESTSEG_NOFLOW")
+    {
+        using RftDate = ::Opm::EclIO::ERft::RftDate;
+
+        const auto rset  = RSet { caseName };
+        const auto model = Setup{ dataSet() };
+
+        {
+            auto rftFile = ::Opm::EclIO::OutputStream::RFT {
+                rset, ::Opm::EclIO::OutputStream::Formatted  { false },
+                ::Opm::EclIO::OutputStream::RFT::OpenExisting{ false }
+            };
+
+            const auto  reportStep = 1;
+            const auto  elapsed    = model.sched.seconds(reportStep);
+            const auto& grid       = model.es.getInputGrid();
+
+            ::Opm::RftIO::write(reportStep, elapsed, model.es.getUnits(),
+                                grid, model.sched, wellSol_NoSegFlow(grid),
+                                rftFile);
         }
 
         const auto rft = ::Opm::EclIO::ERft {
@@ -4728,6 +4777,198 @@ BOOST_AUTO_TEST_CASE(Valve)
     BOOST_CHECK_CLOSE(xSEG.icd_setting( 9), 6.0e-5f / dfltArea(0.102f), 1.0e-5f);
     BOOST_CHECK_CLOSE(xSEG.icd_setting(10), 0.5f                      , 1.0e-5f);
     BOOST_CHECK_CLOSE(xSEG.icd_setting(11), 0.5f                      , 1.0e-5f);
+}
+
+BOOST_AUTO_TEST_CASE(Segment_Pressure_NoFlow)
+{
+    const auto xSEG = readWriteSegmentRFTDataNoSegFlow();
+
+    BOOST_REQUIRE_EQUAL(xSEG.numSegments(), std::size_t{11});
+
+    BOOST_CHECK_CLOSE(xSEG.pressure( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.pressure(11), 0.0f, 1.0e-5f);
+}
+
+BOOST_AUTO_TEST_CASE(Segment_Phase_Rates_NoFlow)
+{
+    const auto xSEG = readWriteSegmentRFTDataNoSegFlow();
+
+    BOOST_REQUIRE_EQUAL(xSEG.numSegments(), std::size_t{11});
+
+    BOOST_CHECK_CLOSE(xSEG.orat( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.orat(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.grat( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.grat(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.wrat( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 8), 0.0f, 1.1e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wrat(11), 0.0f, 1.0e-5f);
+}
+
+BOOST_AUTO_TEST_CASE(Segment_Phase_Velocity_NoFlow)
+{
+    const auto xSEG = readWriteSegmentRFTDataNoSegFlow();
+
+    BOOST_REQUIRE_EQUAL(xSEG.numSegments(), std::size_t{11});
+
+    BOOST_CHECK_CLOSE(xSEG.ovel( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovel(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.wvel( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvel(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.gvel( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvel(11), 0.0f, 1.0e-5f);
+}
+
+BOOST_AUTO_TEST_CASE(Segment_Phase_Holdup_Fractions_NoFlow)
+{
+    const auto xSEG = readWriteSegmentRFTDataNoSegFlow();
+
+    BOOST_REQUIRE_EQUAL(xSEG.numSegments(), std::size_t{11});
+
+    // Note: No-flow segments => oil HF = 1.
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 1), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 2), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 3), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 4), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 5), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 6), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 7), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 8), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o( 9), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o(10), 1.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_o(11), 1.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 1), 0.0f, 3.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 2), 0.0f, 2.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 3), 0.0f, 2.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 4), 0.0f, 2.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 6), 0.0f, 2.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w(10), 0.0f, 2.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_w(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.hf_g(11), 0.0f, 1.0e-5f);
+}
+
+BOOST_AUTO_TEST_CASE(Segment_Phase_Viscosity_NoFlow)
+{
+    const auto xSEG = readWriteSegmentRFTDataNoSegFlow();
+
+    BOOST_REQUIRE_EQUAL(xSEG.numSegments(), std::size_t{11});
+
+    BOOST_CHECK_CLOSE(xSEG.ovis( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 3), 0.0f, 1.2e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 5), 0.0f, 1.1e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.ovis(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.wvis( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 4), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 5), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis(10), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.wvis(11), 0.0f, 1.0e-5f);
+
+    BOOST_CHECK_CLOSE(xSEG.gvis( 1), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 2), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 3), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 4), 0.0f, 1.2e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 5), 0.0f, 1.2e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 6), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 7), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 8), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis( 9), 0.0f, 1.0e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis(10), 0.0f, 1.1e-5f);
+    BOOST_CHECK_CLOSE(xSEG.gvis(11), 0.0f, 1.0e-5f);
 }
 
 BOOST_AUTO_TEST_SUITE_END() // SegmentData
