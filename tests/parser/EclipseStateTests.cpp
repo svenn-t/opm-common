@@ -681,3 +681,48 @@ BOOST_AUTO_TEST_CASE(SALTMFTest) {
     const double epsilon = 0.00001;
     BOOST_CHECK_CLOSE(salinity, saltmf, epsilon);
 }
+
+BOOST_AUTO_TEST_CASE(SALINITCtest)
+{
+    const auto deck_salinitc_input = R"(
+        RUNSPEC
+
+        DIMENS
+        2 2 1 /
+
+        GRID
+
+        DX
+        4*1 /
+        DY
+        4*1 /
+        DZ
+        4*1 /
+        TOPS
+        4*0.0 /
+
+        PORO
+        4*0.3 /
+
+        PROPS
+
+        SALINITC
+        0.1 0.2 0.3 0.4 0.5 0.6 /
+    )";
+    const Parser parser;
+    const auto deck = parser.parseString(deck_salinitc_input);
+    const EclipseState state(deck);
+    const Co2StoreConfig& config = state.getCo2StoreConfig();
+
+    // Check SALINITC. NOTE: converted internally to mass fractions
+    const auto& salinitc = config.saltComponents();
+    static constexpr double expected[6] =
+        {0.00207634, 0.00706239, 0.01085904, 0.00878051, 0.01600849, 0.05205446};
+    constexpr double tol = 1e-3;
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::NA], expected[0], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::K], expected[1], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::CA], expected[2], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::MG], expected[3], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::CL], expected[4], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::SO4], expected[5], tol);
+}

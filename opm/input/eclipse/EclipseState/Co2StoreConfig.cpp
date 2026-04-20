@@ -127,14 +127,21 @@ namespace Opm {
             initEzrokhiTable(deck, "VISCAQA", num_eos_res, cnames, viscaqa_tables);
         }
 
-        // SALINITY or SALTMF convert to mass fraction.
+        // SALINITY, SALTMF or SALINITC convert to mass fraction.
         if (props_section.hasKeyword<ParserKeywords::SALINITY>()) {
             const auto& molality = deck["SALINITY"].back().getRecord(0).getItem("MOLALITY").get<double>(0);
             salt = 1.0 / (1.0 + 1.0 / (molality * MmNaCl));
+            saltArray[SaltIndex::NA] = salt;
+            saltArray[SaltIndex::CL] = salt;
         }
         else if (props_section.hasKeyword<ParserKeywords::SALTMF>()) {
             const auto& mole_frac = deck["SALTMF"].back().getRecord(0).getItem("MOLE_FRACTION").get<double>(0);
             salt = mole_frac * MmNaCl / (mole_frac * (MmNaCl - MmH2O) + MmH2O);
+            saltArray[SaltIndex::NA] = salt;
+            saltArray[SaltIndex::CL] = salt;
+        } else if (props_section.hasKeyword<ParserKeywords::SALINITC>()) {
+            const auto& salinitc = deck["SALINITC"].back().getRecord(0);
+            saltArray.assign(salinitc);
         }
 
         // ACTCO2S
@@ -158,6 +165,12 @@ namespace Opm {
         return salt;
     }
 
+    const SaltArray<double>&
+    Co2StoreConfig::saltComponents() const
+    {
+        return saltArray;
+    }
+
     int Co2StoreConfig::actco2s() const {
         return activityModel;
     }
@@ -169,6 +182,7 @@ namespace Opm {
                 && this->denaqa_tables == other.denaqa_tables
                 && this->viscaqa_tables == other.viscaqa_tables
                 && this->salt == other.salt
+                && this->saltArray == other.saltArray
                 && this->activityModel == other.activityModel
                 && this->cnames == other.cnames;
     }
