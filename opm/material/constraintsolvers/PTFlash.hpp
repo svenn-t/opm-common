@@ -41,17 +41,19 @@
 
 #include <opm/input/eclipse/EclipseState/Compositional/CompositionalConfig.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
+#include <opm/common/OpmLog/OpmLog.hpp>
+
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/common/classname.hh>
 
 #include <limits>
-#include <iostream>
-#include <iomanip>
 #include <stdexcept>
 #include <type_traits>
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace Opm {
 
@@ -163,8 +165,9 @@ public:
         auto V = (Vmin + Vmax)/2;
         // Print initial guess and header
         if (verbosity == 3 || verbosity == 4) {
-            std::cout << "Initial guess " << numComponents << "c : V = " << V << " and [Vmin, Vmax] = [" << Vmin << ", " << Vmax << "]" << std::endl;
-            std::cout << std::setw(10) << "Iteration" << std::setw(16) << "abs(step)" << std::setw(16) << "V" << std::endl;
+            OpmLog::debug(fmt::format("Initial guess {}c : V = {} and [Vmin, Vmax] = [{}, {}]",
+                                     numComponents, V, Vmin, Vmax));
+            OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", "Iteration", "abs(step)", "V"));
         }
         // Newton-Raphson loop
         for (int iteration = 1; iteration < itmax; ++iteration) {
@@ -186,7 +189,7 @@ public:
                 {
                     // Print info
                     if (verbosity == 3 || verbosity == 4) {
-                        std::cout << "V = " << V << " is not within the the range [Vmin, Vmax], solve using Bisection method!" << std::endl;
+                        OpmLog::debug(fmt::format("V = {} is not within the range [Vmin, Vmax], solve using Bisection method!", V));
                     }
 
                     // Run bisection
@@ -200,14 +203,14 @@ public:
 
                     // Print final result
                     if (verbosity >= 1) {
-                        std::cout << "Rachford-Rice (Bisection) converged to final solution L = " << L << std::endl;
+                        OpmLog::debug(fmt::format("Rachford-Rice (Bisection) converged to final solution L = {}", L));
                     }
                     return L;
                 }
 
             // Print iteration info
             if (verbosity == 3 || verbosity == 4) {
-                std::cout << std::setw(10) << iteration << std::setw(16) << Opm::abs(delta) << std::setw(16) << V << std::endl;
+                OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", iteration, Opm::abs(delta), V));
             }
             // Check for convergence
             if ( Opm::abs(r) < tol ) {
@@ -216,14 +219,14 @@ public:
 
                 // Print final result
                 if (verbosity >= 1) {
-                    std::cout << "Rachford-Rice converged to final solution L = " << L << std::endl;
+                    OpmLog::debug(fmt::format("Rachford-Rice converged to final solution L = {}", L));
                 }
                 return L;
             }
         }
 
         // Throw error if Rachford-Rice fails
-        throw std::runtime_error(" Rachford-Rice did not converge within maximum number of iterations" );
+        OPM_THROW(std::runtime_error, " Rachford-Rice did not converge within maximum number of iterations");
     }
 
     // performing the flash calculation, which is done with Scalar without touching derivatives
@@ -246,12 +249,14 @@ public:
 
         if ( L_scalar <= 0 || L_scalar == 1 ) {
             if (verbosity >= 1) {
-                std::cout << "Perform stability test (L <= 0 or L == 1)!" << std::endl;
+                OpmLog::debug("Perform stability test (L <= 0 or L == 1)!");
             }
             phaseStabilityTest_(is_stable, K_scalar, fluid_state, z_scalar, eos_type, verbosity);
         }
         if (verbosity >= 1) {
-            std::cout << "Inputs after stability test are K = [" << K_scalar << "], L = [" << L_scalar << "], z = [" << z_scalar << "], P = " << fluid_state.pressure(0) << ", and T = " << fluid_state.temperature(0) << std::endl;
+            OpmLog::debug(fmt::format("Inputs after stability test are K = [{}], L = [{}], z = [{}], P = {}, and T = {}",
+                                     fmt::join(K_scalar, " "), L_scalar, fmt::join(z_scalar, " "),
+                                     fluid_state.pressure(0), fluid_state.temperature(0)));
         }
         // TODO: we do not need two variables is_stable and is_single_hase, while lacking a good name
         // TODO: from the later code, is good if we knows whether single_phase_gas or single_phase_oil here
@@ -279,7 +284,7 @@ public:
 
         // Print new header
         if (verbosity >= 3) {
-                std::cout << std::setw(10) << "Iteration" << std::setw(16) << "g(Lmid)" << std::setw(16) << "L" << std::endl;
+            OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", "Iteration", "g(Lmid)", "L"));
         }
 
         constexpr int max_it = 10000;
@@ -291,15 +296,14 @@ public:
 
         // Bisection loop
         if (closeLmaxLmin(Lmax, Lmin) ){
-            throw std::runtime_error(fmt::format("Strange bisection with Lmax {} and Lmin {}?", Lmax, Lmin));
+            OPM_THROW(std::runtime_error, fmt::format("Strange bisection with Lmax {} and Lmin {}?", Lmax, Lmin));
         }
         for (int iteration = 0; iteration < max_it; ++iteration){
             // New midpoint
             auto L = (Lmin + Lmax) / 2;
             auto gMid = rachfordRice_g_(K, L, z);
-            // std::cout << ">>> Lmin = " << Lmin << "g(Lmin) = " << gLmin << " L = " << L << " g(L) = " << gMid << std::endl;
             if (verbosity == 3 || verbosity == 4) {
-                std::cout << std::setw(10) << iteration << std::setw(16) << gMid << std::setw(16) << L << std::endl;
+                OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", iteration, gMid, L));
             }
 
             // Check if midpoint fulfills g=0 or L - Lmin is sufficiently small
@@ -317,7 +321,8 @@ public:
                 gLmin = gMid;
             }
         }
-        throw std::runtime_error(" Rachford-Rice bisection failed with " + std::to_string(max_it) + " iterations!");
+        OPM_THROW(std::runtime_error,
+                  fmt::format(" Rachford-Rice bisection failed with {} iterations!", max_it));
     }
 
     template <class Vector, class FlashFluidState>
@@ -355,7 +360,8 @@ public:
 
             // Print
             if (verbosity >= 1) {
-                std::cout << "Cell is single-phase, liquid (L = 1.0) due to Li's phase labeling method giving T < Tc_est (" << T << " < " << Tc_est << ")!" << std::endl;
+                OpmLog::debug(fmt::format("Cell is single-phase, liquid (L = 1.0) due to Li's phase labeling method giving T < Tc_est ({} < {})!",
+                                         T, Tc_est));
             }
         }
         else {
@@ -364,7 +370,8 @@ public:
 
             // Print
             if (verbosity >= 1) {
-                std::cout << "Cell is single-phase, vapor (L = 0.0) due to Li's phase labeling method giving T >= Tc_est (" << T << " >= " << Tc_est << ")!" << std::endl;
+                OpmLog::debug(fmt::format("Cell is single-phase, vapor (L = 0.0) due to Li's phase labeling method giving T >= Tc_est ({} >= {})!",
+                                         T, Tc_est));
             }
         }
 
@@ -384,14 +391,14 @@ public:
 
         // Check for vapour instable phase
         if (verbosity == 3 || verbosity == 4) {
-            std::cout << "Stability test for vapor phase:" << std::endl;
+            OpmLog::debug("Stability test for vapor phase:");
         }
         checkStability_(fluid_state, isTrivialV, K0, y, S_v, z, /*isGas=*/true, eos_type, verbosity);
         bool V_unstable = (S_v < (1.0 + 1e-5)) || isTrivialV;
 
         // Check for liquids stable phase
         if (verbosity == 3 || verbosity == 4) {
-            std::cout << "Stability test for liquid phase:" << std::endl;
+            OpmLog::debug("Stability test for liquid phase:");
         }
         checkStability_(fluid_state, isTrivialL, K1, x, S_l, z, /*isGas=*/false, eos_type, verbosity);
         bool L_stable = (S_l < (1.0 + 1e-5)) || isTrivialL;
@@ -463,7 +470,7 @@ protected:
 
         // Setup output
         if (verbosity >= 3) {
-            std::cout << std::setw(10) << "Iteration" << std::setw(16) << "K-Norm" << std::setw(16) << "R-Norm" << std::endl;
+            OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", "Iteration", "K-Norm", "R-Norm"));
         }
 
         // Michelsens stability test.
@@ -544,7 +551,7 @@ protected:
 
             // Print iteration info
             if (verbosity >= 3) {
-                std::cout << std::setw(10) << i << std::setw(16) << K_norm << std::setw(16) << R_norm << std::endl;
+                OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", i, K_norm, R_norm));
             }
 
             // Check convergence
@@ -554,7 +561,7 @@ protected:
             //todo: make sure that no mole fraction is smaller than 1e-8 ?
             //todo: take care of water!
         }
-        throw std::runtime_error(" Stability test did not converge");
+        OPM_THROW(std::runtime_error, " Stability test did not converge");
     }//end checkStability
 
     // TODO: basically FlashFluidState and ComponentVector are both depending on the one Scalar type
@@ -591,7 +598,8 @@ protected:
                           const EOSType& eos_type,
                           int verbosity = 0) {
         if (verbosity >= 1) {
-            std::cout << "Cell is two-phase! Solve Rachford-Rice with initial K = [" << K_scalar << "]" << std::endl;
+            OpmLog::debug(fmt::format("Cell is two-phase! Solve Rachford-Rice with initial K = [{}]",
+                                     fmt::join(K_scalar, " ")));
         }
 
         // Calculate composition using nonlinear solver
@@ -599,13 +607,13 @@ protected:
         bool converged = false;
         if (flash_2p_method == "newton") {
             if (verbosity >= 1) {
-                std::cout << "Calculate composition using Newton." << std::endl;
+                OpmLog::debug("Calculate composition using Newton.");
             }
             converged = newtonComposition_(K_scalar, L_scalar, fluid_state_scalar, z_scalar, flash_tolerance, eos_type, verbosity);
         } else if (flash_2p_method == "ssi") {
             // Successive substitution
             if (verbosity >= 1) {
-                std::cout << "Calculate composition using Succcessive Substitution." << std::endl;
+                OpmLog::debug("Calculate composition using Successive Substitution.");
             }
             converged = successiveSubstitutionComposition_(K_scalar, L_scalar, fluid_state_scalar, z_scalar, false, flash_tolerance, eos_type, verbosity);
         } else if (flash_2p_method == "ssi+newton") {
@@ -614,11 +622,13 @@ protected:
                 converged = newtonComposition_(K_scalar, L_scalar, fluid_state_scalar, z_scalar, flash_tolerance, eos_type, verbosity);
             }
         } else {
-            throw std::logic_error("unknown two phase flash method " + flash_2p_method + " is specified");
+            OPM_THROW(std::logic_error,
+                      "unknown two phase flash method " + flash_2p_method + " is specified");
         }
 
         if (!converged) {
-            throw std::runtime_error("flash calculation did not get converged with " + flash_2p_method);
+            OPM_THROW(std::runtime_error,
+                      "flash calculation did not get converged with " + flash_2p_method);
         }
     }
 
@@ -647,27 +657,19 @@ protected:
 
         // Print initial condition
         if (verbosity >= 1) {
-            std::cout << " the current L is " << Opm::getValue(L) << std::endl;
-            std::cout << "Initial guess: x = [";
-            for (int compIdx=0; compIdx<numComponents; ++compIdx){
-                if (compIdx < numComponents - 1)
-                    std::cout << fluid_state.moleFraction(oilPhaseIdx, compIdx) << " ";
-                else
-                    std::cout << fluid_state.moleFraction(oilPhaseIdx, compIdx);
+            OpmLog::debug(fmt::format(" the current L is {}", Opm::getValue(L)));
+            std::vector<Scalar> x_vals(numComponents), y_vals(numComponents);
+            for (int compIdx = 0; compIdx < numComponents; ++compIdx) {
+                x_vals[compIdx] = Opm::getValue(fluid_state.moleFraction(oilPhaseIdx, compIdx));
+                y_vals[compIdx] = Opm::getValue(fluid_state.moleFraction(gasPhaseIdx, compIdx));
             }
-            std::cout << "], y = [";
-            for (int compIdx=0; compIdx<numComponents; ++compIdx){
-                if (compIdx < numComponents - 1)
-                    std::cout << fluid_state.moleFraction(gasPhaseIdx, compIdx) << " ";
-                else
-                    std::cout << fluid_state.moleFraction(gasPhaseIdx, compIdx);
-            }
-            std::cout << "], and " << "L = " << L << std::endl;
+            OpmLog::debug(fmt::format("Initial guess: x = [{}], y = [{}], and L = {}",
+                                     fmt::join(x_vals, " "), fmt::join(y_vals, " "), Opm::getValue(L)));
         }
 
         // Print header
         if (verbosity == 2 || verbosity == 4) {
-            std::cout << std::setw(10) << "Iteration" << std::setw(16) << "Norm2(step)" << std::setw(16) << "Norm2(Residual)" << std::endl;
+            OpmLog::debug(fmt::format("{:>10}{:>16}{:>16}", "Iteration", "Norm2(step)", "Norm2(Residual)"));
         }
 
         // AD type
@@ -724,7 +726,7 @@ protected:
             assembleNewton_<CompositionalFluidState<Eval, FluidSystem>, ComponentVector, num_primary_variables, num_equations>
                     (flash_fluid_state, z, jac, res);
             if (verbosity >= 1) {
-                std::cout << " newton residual is " << res.two_norm() << std::endl;
+                OpmLog::debug(fmt::format(" newton residual is {}", res.two_norm()));
             }
             converged = res.two_norm() < tolerance;
             if (converged) {
@@ -758,16 +760,18 @@ protected:
             ++iter;
         }
         if (verbosity >= 1) {
+            fmt::memory_buffer buf;
             for (unsigned i = 0; i < num_equations; ++i) {
                 for (unsigned j = 0; j < num_primary_variables; ++j) {
-                    std::cout << " " << jac[i][j];
+                    fmt::format_to(std::back_inserter(buf), " {}", jac[i][j]);
                 }
-                std::cout << std::endl;
+                fmt::format_to(std::back_inserter(buf), "\n");
             }
-            std::cout << std::endl;
+            OpmLog::debug(fmt::to_string(buf));
         }
         if (!converged) {
-            throw std::runtime_error(" Newton composition update did not converge within maxIterations " + std::to_string(max_iter));
+            OPM_THROW(std::runtime_error,
+                      fmt::format(" Newton composition update did not converge within maxIterations {}", max_iter));
         }
 
         // fluid_state is scalar, we need to update all the values for fluid_state here
@@ -1116,18 +1120,16 @@ protected:
         // Determine max. iterations based on if it will be used as a standalone flash or as a pre-process to Newton (or other) method.
         const int maxIterations = newton_afterwards ? 5 : 100;
 
-        // Store cout format before manipulation
-        std::ios_base::fmtflags f(std::cout.flags());
-
         // Print initial guess
-        if (verbosity >= 1)
-            std::cout << "Initial guess: K = [" << K << "] and L = " << L << std::endl;
+        if (verbosity >= 1) {
+            OpmLog::debug(fmt::format("Initial guess: K = [{}] and L = {}", fmt::join(K, " "), L));
+        }
 
         if (verbosity == 2 || verbosity == 4) {
             // Print header
             int fugWidth = (numComponents * 12)/2;
             int convWidth = fugWidth + 7;
-            std::cout << std::setw(10) << "Iteration" << std::setw(fugWidth) << "fL/fV" << std::setw(convWidth) << "norm2(fL/fv-1)" << std::endl;
+            OpmLog::debug(fmt::format("{:>10}{:>{}}{:>{}}", "Iteration", "fL/fV", fugWidth, "norm2(fL/fv-1)", convWidth));
         }
         //
         // Successive substitution loop
@@ -1157,47 +1159,34 @@ protected:
 
             // Print iteration info
             if (verbosity >= 2) {
-                int prec = 5;
-                int fugWidth = (prec + 3);
-                int convWidth = prec + 9;
-                std::cout << std::defaultfloat;
-                std::cout << std::fixed;
-                std::cout << std::setw(5) << i;
-                std::cout << std::setw(fugWidth);
-                std::cout << std::setprecision(prec);
-                std::cout << newFugRatio;
-                std::cout << std::scientific;
-                std::cout << std::setw(convWidth) << convFugRatio.two_norm() << std::endl;
+                constexpr int prec = 5;
+                constexpr int fugWidth = prec + 3;
+                constexpr int convWidth = prec + 9;
+                OpmLog::debug(fmt::format("{:>5}{:>{}.{}f}{:>{}.{}e}",
+                                         i,
+                                         fmt::join(newFugRatio, " "), fugWidth, prec,
+                                         convFugRatio.two_norm(), convWidth, prec));
             }
 
             // Check convergence
             if (convFugRatio.two_norm() < flash_tolerance) {
-                // Restore cout format
-                std::cout.flags(f);
-
                 // Print info
                 if (verbosity >= 1) {
-                    std::cout << "Solution converged to the following result :" << std::endl;
-                    std::cout << "x = [";
+                    std::vector<typename ComponentVector::field_type> x_vals(numComponents), y_vals(numComponents);
                     for (int compIdx = 0; compIdx < numComponents; ++compIdx) {
-                        if (compIdx < numComponents - 1)
-                            std::cout << fluid_state.moleFraction(oilPhaseIdx, compIdx) << " ";
-                        else
-                            std::cout << fluid_state.moleFraction(oilPhaseIdx, compIdx);
+                        x_vals[compIdx] = fluid_state.moleFraction(oilPhaseIdx, compIdx);
+                        y_vals[compIdx] = fluid_state.moleFraction(gasPhaseIdx, compIdx);
                     }
-                    std::cout << "]" << std::endl;
-                    std::cout << "y = [";
-                    for (int compIdx = 0; compIdx < numComponents; ++compIdx) {
-                        if (compIdx < numComponents - 1)
-                            std::cout << fluid_state.moleFraction(gasPhaseIdx, compIdx) << " ";
-                        else
-                            std::cout << fluid_state.moleFraction(gasPhaseIdx, compIdx);
-                    }
-                    std::cout << "]" << std::endl;
-                    std::cout << "K = [" << K << "]" << std::endl;
-                    std::cout << "L = " << L << std::endl;
+                    OpmLog::debug(fmt::format("Solution converged to the following result :\n"
+                                             "x = [{}]\n"
+                                             "y = [{}]\n"
+                                             "K = [{}]\n"
+                                             "L = {}",
+                                             fmt::join(x_vals, " "),
+                                             fmt::join(y_vals, " "),
+                                             fmt::join(K, " "),
+                                             L));
                 }
-                // Restore cout format format
                 return true;
             }
             //  If convergence is not met, K is updated in a successive substitution manner
@@ -1215,9 +1204,9 @@ protected:
         {
            const std::string msg = fmt::format("Successive substitution composition update did not converge within maxIterations {}.", maxIterations);
            if (!newton_afterwards) {
-               throw std::runtime_error(msg);
+               OPM_THROW(std::runtime_error, msg);
            } else if (verbosity > 0) {
-               std::cout << msg << std::endl;
+               OpmLog::debug(msg);
            }
         }
 
