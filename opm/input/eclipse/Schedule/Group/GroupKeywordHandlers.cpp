@@ -543,7 +543,6 @@ void handleGEFAC(HandlerContext& handlerContext)
             if (new_group.update_gefac(gefac, use_efficiency_in_network)) {
                 handlerContext.state().wellgroup_events().addEvent( group_name, ScheduleEvents::WELLGROUP_EFFICIENCY_UPDATE);
                 handlerContext.state().events().addEvent( ScheduleEvents::WELLGROUP_EFFICIENCY_UPDATE );
-                handlerContext.state().groups.update(std::move(new_group));
                 // Ensure network node efficiences are also updated
                 auto ext_network = handlerContext.state().network.get();
                 if (ext_network.active() && ext_network.has_node(group_name)) {
@@ -555,6 +554,7 @@ void handleGEFAC(HandlerContext& handlerContext)
                         handlerContext.state().network.update( std::move(ext_network) );
                     }
                 }
+                handlerContext.state().groups.update(std::move(new_group));
             }
         }
     }

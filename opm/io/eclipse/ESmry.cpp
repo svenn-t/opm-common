@@ -970,10 +970,16 @@ ESmry::getListOfArrays(const std::string& filename, bool formatted)
 
     int64_t num;
 
-    if (formatted)
+    if (formatted) {
         ptr = fopen(filename.c_str(),"r");  // r for read, files opened as text files
-    else
+    }
+    else {
         ptr = fopen(filename.c_str(),"rb");  // r for read, b for binary
+    }
+
+    if (!ptr) {
+        OPM_THROW(std::runtime_error, fmt::format("Error opening ESMRY file '{}' for reading", filename));
+    }
 
     bool endOfFile = false;
 
