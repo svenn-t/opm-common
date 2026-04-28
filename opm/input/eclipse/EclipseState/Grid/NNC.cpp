@@ -430,6 +430,13 @@ bool NNCDataContainerDiffGrid::operator==(const NNCDataContainerDiffGrid& other)
 // NNCCollection — indexed collection of same-grid and cross-grid NNCs
 // ===========================================================================
 
+/// Default constructor: the global grid (grid 0) always exists, initially
+/// with an empty NNC container.
+NNCCollection::NNCCollection()
+{
+    m_sameGridNNCs.emplace(std::size_t{0}, NNCDataContainer{});
+}
+
 /// Constructs an NNCCollection pre-populated with @p nnc_global as the
 /// global (grid 0) same-grid NNC.
 NNCCollection::NNCCollection(NNCDataContainer nnc_global)
@@ -480,13 +487,20 @@ NNCDataContainerDiffGrid& NNCCollection::getNNC(std::size_t grid1, std::size_t g
 
 bool NNCCollection::hasCrossGridNNC(std::size_t grid1, std::size_t grid2) const
 {
-    return m_diffGridNNCs.count(std::make_pair(grid1, grid2)) > 0;
+    const auto key = std::minmax(grid1, grid2);
+    return m_diffGridNNCs.count(key) > 0;
 }
 
 /// Adds a same-grid NNC for @p grid.
-/// Throws std::runtime_error if an entry for this grid index already exists.
+/// For grid 0 (global), replaces the existing empty entry inserted by the
+/// constructor.  For all other grids, throws std::runtime_error if an entry
+/// already exists.
 void NNCCollection::addNNC(std::size_t grid, NNCDataContainer nnc)
 {
+    if (grid == 0) {
+        m_sameGridNNCs[std::size_t{0}] = std::move(nnc);
+        return;
+    }
     if (m_sameGridNNCs.count(grid)) {
         throw std::runtime_error(
             "NNCCollection::addNNC: same-grid NNC already exists for grid "
@@ -516,35 +530,27 @@ NNCDataContainer& NNCCollection::getNNC(std::size_t grid)
 
 bool NNCCollection::hasSameGridNNC(std::size_t grid) const
 {
-    return m_sameGridNNCs.count(grid) > 0;
+    auto it = m_sameGridNNCs.find(grid);
+    return it != m_sameGridNNCs.end() && !it->second.input().empty();
 }
 
-/// Adds @p nnc as the global (grid 0) same-grid NNC.
-/// Equivalent to addNNC(0, nnc).
+/// Replaces the global (grid 0) same-grid NNC.
 void NNCCollection::addNNC(NNCDataContainer nnc)
 {
-    addNNC(std::size_t{0}, std::move(nnc));
+    m_sameGridNNCs[std::size_t{0}] = std::move(nnc);
 }
 
 /// Returns a mutable reference to the global (grid 0) same-grid NNC.
-/// Throws std::runtime_error if no global NNC has been added.
+/// Grid 0 is always present (inserted by the constructor); never throws.
 NNCDataContainer& NNCCollection::getGlobalNNC()
 {
-    if (!hasGlobalNNC()) {
-        throw std::runtime_error(
-            "NNCCollection::getGlobalNNC: no global NNC found.");
-    }
     return getNNC(std::size_t{0});
 }
 
 /// Returns a const reference to the global (grid 0) same-grid NNC.
-/// Throws std::runtime_error if no global NNC has been added.
+/// Grid 0 is always present (inserted by the constructor); never throws.
 const NNCDataContainer& NNCCollection::getGlobalNNC() const
 {
-    if (!hasGlobalNNC()) {
-        throw std::runtime_error(
-            "NNCCollection::getGlobalNNC: no global NNC found.");
-    }
     return getNNC(std::size_t{0});
 }
 

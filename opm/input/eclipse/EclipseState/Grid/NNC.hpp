@@ -199,7 +199,7 @@ public:
 class NNCCollection
 {
 public:
-    NNCCollection() = default;
+    NNCCollection();
     explicit NNCCollection(NNCDataContainer nnc_global);
 
     // ---- insertion --------------------------------------------------------
@@ -219,7 +219,19 @@ public:
     NNCDataContainerDiffGrid&       getNNC(std::size_t grid1, std::size_t grid2);
 
     bool hasCrossGridNNC(std::size_t grid1, std::size_t grid2) const;
-    bool empty() const { return m_sameGridNNCs.empty() && m_diffGridNNCs.empty(); }
+
+    /// Returns true if the collection holds no NNC data of any kind.
+    /// Cannot use m_sameGridNNCs.empty() because grid 0 is always present
+    /// (inserted by the constructor) even when no NNCs have been added.
+    /// Instead, each same-grid container is checked for actual entries.
+    bool empty() const
+    {
+        for (const auto& [grid, nnc] : m_sameGridNNCs)
+            if (!nnc.input().empty()) return false;
+        for (const auto& [grids, nnc] : m_diffGridNNCs)
+            if (!nnc.input().empty()) return false;
+        return true;
+    }
     // ---- same-grid access -------------------------------------------------
 
     const NNCDataContainer& getNNC(std::size_t grid) const;
@@ -232,17 +244,25 @@ public:
     const NNCDataContainer& getGlobalNNC() const;
     NNCDataContainer&       getGlobalNNC();
 
-    bool hasGlobalNNC() const { return hasSameGridNNC(0); };
+    /// Returns true if the global grid has actual same-grid NNC data.
+    /// Grid 0 always exists in the collection; this checks whether it is
+    /// non-empty (i.e. NNCs were explicitly added for the global grid).
+    bool hasGlobalNNC() const { return !getGlobalNNC().input().empty(); }
 
     /// Returns true if the given grid has any NNC involvement:
-    /// same-grid NNCs, or cross-grid NNCs with any other grid.
+    /// same-grid NNCs with data, or cross-grid NNCs with any other grid.
     bool hasNNCForGrid(std::size_t grid_index) const
     {
-        if (hasSameGridNNC(grid_index))
+        if (((grid_index == 0) && hasGlobalNNC()) || ((grid_index != 0) && hasSameGridNNC(grid_index)))
+        {
             return true;
-        for (const auto& entry : m_diffGridNNCs) {
-            if (entry.first.first == grid_index || entry.first.second == grid_index)
+        }
+        for (const auto& [grid, nnc] : m_diffGridNNCs) {
+            if (const auto& [g1, g2] = grid;
+                ((g1 == grid_index) || (g2 == grid_index)) && !nnc.input().empty())
+            {
                 return true;
+            }
         }
         return false;
     }

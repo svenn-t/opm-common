@@ -2065,7 +2065,7 @@ std::vector<double> EclipseGrid::createDVector(const std::array<int,3>& dims, st
 
     void EclipseGrid::save_nnc(Opm::EclIO::EclOutput& egridfile, const NNCCollection& nnc_col) const {
 
-        // Global Grid NNC
+        // Global Grid NNC (grid = 0 always exists, but may be empty)
         save_nnc_same_grid(egridfile, nnc_col.getGlobalNNC().input(), 0);
 
         // LGR NNC
