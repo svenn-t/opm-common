@@ -190,21 +190,21 @@ public:
     }
 
 private:
-    int m_table_num;
-    double m_datum_depth;
-    FLO_TYPE m_flo_type;
-    WFR_TYPE m_wfr_type;
-    GFR_TYPE m_gfr_type;
-    ALQ_TYPE m_alq_type;
+    int m_table_num{};
+    double m_datum_depth{};
+    FLO_TYPE m_flo_type{};
+    WFR_TYPE m_wfr_type{};
+    GFR_TYPE m_gfr_type{};
+    ALQ_TYPE m_alq_type{};
 
-    std::vector<double> m_flo_data;
-    std::vector<double> m_thp_data;
-    std::vector<double> m_wfr_data;
-    std::vector<double> m_gfr_data;
-    std::vector<double> m_alq_data;
+    std::vector<double> m_flo_data{};
+    std::vector<double> m_thp_data{};
+    std::vector<double> m_wfr_data{};
+    std::vector<double> m_gfr_data{};
+    std::vector<double> m_alq_data{};
 
-    std::vector<double> m_data;
-    KeywordLocation m_location;
+    std::vector<double> m_data{};
+    KeywordLocation m_location{};
 
     void check();
 
