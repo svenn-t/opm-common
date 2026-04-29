@@ -37,6 +37,10 @@
 #include <boost/test/data/test_case.hpp>
 #endif
 
+#include <opm/common/OpmLog/LogUtil.hpp>
+#include <opm/common/OpmLog/OpmLog.hpp>
+#include <opm/common/OpmLog/StreamLog.hpp>
+
 #include <opm/material/constraintsolvers/PTFlash.hpp>
 #include <opm/material/fluidsystems/ThreeComponentFluidSystem.hh>
 
@@ -50,6 +54,9 @@
 #include <opm/json/JsonObject.hpp>
 
 #include <fmt/format.h>
+
+#include <iostream>
+#include <memory>
 
 // It is a three component system
 using Scalar = double;
@@ -71,6 +78,10 @@ BOOST_DATA_TEST_CASE(PtFlash, test_methods)
 BOOST_AUTO_TEST_CASE(PtFlash)
 #endif
 {
+    // Add a debug backend so that PTFlash OpmLog::debug() messages are not lost.
+    auto debugLog = std::make_shared<Opm::StreamLog>(std::cout, Opm::Log::MessageType::Debug);
+    Opm::OpmLog::addBackend("DEBUGLOG", debugLog);
+
 #if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 67
 for (const auto& sample : test_methods) {
 #endif
