@@ -36,11 +36,15 @@
 
 namespace Opm
 {
-
 enum class SaltIndex : std::size_t
 {
     NA, K, CA, MG, CL, SO4,
     NCOMP // DO NOT CHANGE! Must be the last enum to set size of SaltArray!
+};
+
+enum class IonType
+{
+    Cation, Anion
 };
 
 inline SaltIndex
@@ -65,6 +69,44 @@ saltIndexfromString(const std::string& s)
         return SaltIndex::SO4;
     }
     throw std::invalid_argument("SaltIndex not valid!");
+}
+
+inline IonType
+categorizeIon(const SaltIndex s)
+{
+    switch (s) {
+    case SaltIndex::CA:
+    case SaltIndex::NA:
+    case SaltIndex::MG:
+    case SaltIndex::K:
+        return IonType::Cation;
+    case SaltIndex::CL:
+    case SaltIndex::SO4:
+        return IonType::Anion;
+    default:
+        throw std::runtime_error("Unknown SaltIndex");
+    }
+}
+
+inline short
+ionStrength(const SaltIndex s)
+{
+    switch (s) {
+    case SaltIndex::CA:
+        return 2;
+    case SaltIndex::NA:
+        return 1;
+    case SaltIndex::MG:
+        return 2;
+    case SaltIndex::K:
+        return 1;
+    case SaltIndex::CL:
+        return -1;
+    case SaltIndex::SO4:
+        return -2;
+    default:
+        throw std::runtime_error("Unknown SaltIndex");
+    }
 }
 
 template <class Scalar>
@@ -94,6 +136,7 @@ class SaltArray
 {
 public:
     static constexpr std::size_t ncomp = static_cast<std::size_t>(SaltIndex::NCOMP);
+    using SaltIndexPair = std::pair<std::vector<SaltIndex>, std::vector<SaltIndex> >;
 
     SaltArray() = default;
 
@@ -169,6 +212,69 @@ public:
     T sum() const
     {
         return std::accumulate(begin(), end(), T{});
+    }
+
+    [[nodiscard]] bool any_nonzero() const noexcept
+    {
+        return std::any_of(begin(),
+                           end(),
+                           [](const T& val) {
+                               return val != T{};
+                           });
+    }
+
+    [[nodiscard]] SaltIndexPair cation_anion_pair() const
+    {
+        std::vector<std::pair<short, SaltIndex> > cations;
+        std::vector<std::pair<short, SaltIndex> > anions;
+        cations.reserve(size());
+        anions.reserve(size());
+        for (std::size_t i = 0; i < size(); ++i) {
+            auto ind = static_cast<SaltIndex>(i);
+            auto ionStr = ionStrength(ind);
+            if ((*this)[ind] != T{}) {
+                if (categorizeIon(ind) == IonType::Cation) {
+                    cations.emplace_back(ionStr, ind);
+
+                } else {
+                    anions.emplace_back(ionStr, ind);
+                }
+            }
+        }
+
+        // Sort by ion strength: descending for cations, ascending for anions (most to less
+        // negative)
+        std::ranges::sort(cations, std::ranges::greater{}, &std::pair<short, SaltIndex>::first);
+        std::ranges::sort(anions, {}, &std::pair<short, SaltIndex>::first);
+
+        // Return only cations and anions SaltIndex
+        std::vector<SaltIndex> cationIndex;
+        std::vector<SaltIndex> anionIndex;
+        cationIndex.reserve(cations.size());
+        anionIndex.reserve(anions.size());
+        std::ranges::transform(cations,
+                               std::back_inserter(cationIndex),
+                               &std::pair<short, SaltIndex>::second);
+        std::ranges::transform(anions,
+                               std::back_inserter(anionIndex),
+                               &std::pair<short, SaltIndex>::second);
+
+        return {cationIndex, anionIndex};
+    }
+
+    SaltArray<T> to_molality() const
+    {
+        SaltArray<T> molalityArray;
+        for (std::size_t i = 0; i < saltData_.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            molalityArray[sIdx] = (*this)[sIdx] / saltMolarMass<T>(sIdx);
+        }
+
+        T s = 1.0 - sum();
+        for (auto& elem : molalityArray) {
+            elem /= s;
+        }
+        return molalityArray;
     }
 
 private:
