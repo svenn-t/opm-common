@@ -39,6 +39,8 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 
+#include <opm/common/utility/SaltArray.hpp>
+
 #include <opm/material/densead/Evaluation.hpp>
 #include <opm/material/densead/Math.hpp>
 
@@ -571,6 +573,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithH2OClass, Scalar, Types)
     Evaluation T;
     Evaluation p;
     Evaluation S;
+    Opm::SaltArray<Evaluation> saltArray;
 
     // Rel. diff. tolerance
     Scalar tol = 1e-2;
@@ -583,6 +586,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithH2OClass, Scalar, Types)
     for (int iS = 0; iS < numS; ++iS){
         // Get salinity from reference data (mass fraction)
         S = Evaluation(salinity_ref.get_array_item(iS).as_double());
+        // OBS: mass fraction NaCl converted to Na+ and Cl- mass fractions
+        saltArray[Opm::SaltIndex::NA] = S * 0.393;
+        saltArray[Opm::SaltIndex::CL] = S * 0.607;
 
         for (int iT = 0; iT < numT; ++iT) {
             // Get temperature from reference data
@@ -593,7 +599,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithH2OClass, Scalar, Types)
                 p = Evaluation(pres_ref.get_array_item(iP).as_double());
 
                 // Density
-                Scalar dens = BrineDyn::liquidDensity(T, p, S, extrapolate).value();
+                Scalar dens = BrineDyn::liquidDensityLC(T, p, saltArray, extrapolate).value();
                 Json::JsonObject dens_ref_ax1 = density_ref.get_array_item(iS);
                 Json::JsonObject dens_ref_ax2 = dens_ref_ax1.get_array_item(iT);
                 Scalar dens_ref = Scalar(dens_ref_ax2.get_array_item(iP).as_double());
@@ -652,6 +658,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithSimpleHuDuanH2OClass, Scalar, Types)
     Evaluation T;
     Evaluation p;
     Evaluation S;
+    Opm::SaltArray<Evaluation> saltArray;
 
     // Rel. diff. tolerance
     Scalar tol = 1e-2;
@@ -663,6 +670,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithSimpleHuDuanH2OClass, Scalar, Types)
     for (int iS = 0; iS < numS; ++iS){
         // Get salinity from reference data (mass fraction)
         S = Evaluation(salinity_ref.get_array_item(iS).as_double());
+        // OBS: mass fraction NaCl converted to Na+ and Cl- mass fractions
+        saltArray[Opm::SaltIndex::NA] = S * 0.393;
+        saltArray[Opm::SaltIndex::CL] = S * 0.607;
 
         for (int iT = 0; iT < numT; ++iT) {
             // Get temperature from reference data
@@ -673,7 +683,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithSimpleHuDuanH2OClass, Scalar, Types)
                 p = Evaluation(pres_ref.get_array_item(iP).as_double());
 
                 // Density
-                Scalar dens = BrineDyn::liquidDensity(T, p, S, extrapolate).value();
+                Scalar dens = BrineDyn::liquidDensityLC(T, p, saltArray, extrapolate).value();
                 Json::JsonObject dens_ref_ax1 = density_ref.get_array_item(iS);
                 Json::JsonObject dens_ref_ax2 = dens_ref_ax1.get_array_item(iT);
                 Scalar dens_ref = Scalar(dens_ref_ax2.get_array_item(iP).as_double());

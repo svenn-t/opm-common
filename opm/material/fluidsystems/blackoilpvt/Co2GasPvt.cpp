@@ -27,6 +27,7 @@
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/common/ErrorMacros.hpp>
 #include <opm/common/utility/gpuDecorators.hpp>
+#include <opm/common/utility/SaltArray.hpp>
 
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
@@ -35,7 +36,7 @@ namespace Opm {
 
 template<class Scalar, template<class> class Storage>
 Co2GasPvt<Scalar, Storage>::
-Co2GasPvt(const ContainerT& salinity,
+Co2GasPvt(const SaltContainerT& salinity,
           int activityModel,
           int thermalMixingModel,
           Scalar T_ref,
@@ -59,7 +60,10 @@ Co2GasPvt(const ContainerT& salinity,
     setNumRegions(num_regions);
     for (int i = 0; i < num_regions; ++i) {
         gasReferenceDensity_[i] = CO2::gasDensity(co2Tables, T_ref, P_ref, extrapolate);
-        brineReferenceDensity_[i] = Brine::liquidDensity(T_ref, P_ref, salinity_[i], extrapolate);
+        brineReferenceDensity_[i] = Brine::liquidDensityLC(T_ref,
+                                                           P_ref,
+                                                           salinity_[i],
+                                                           extrapolate);
     }
 }
 
@@ -90,17 +94,23 @@ initFromState(const EclipseState& eclState, const Schedule&)
 
     std::size_t regions = eclState.runspec().tabdims().getNumPVTTables();
     setNumRegions(regions);
+    setSaltComponents(eclState.getCo2StoreConfig().saltComponents());
     for (std::size_t regionIdx = 0; regionIdx < regions; ++regionIdx) {
         // Currently we only support constant salinity converted to mass fraction
-        salinity_[regionIdx] = eclState.getCo2StoreConfig().salinity();
         // For consistency we compute the reference density the same way as in BrineCo2Pvt.cpp
         if (enableEzrokhiDensity_) {
             const Scalar& rho_pure = H2O::liquidDensity(T_ref, P_ref, extrapolate);
             const Scalar& nacl_exponent = ezrokhiExponent_(T_ref, ezrokhiDenNaClCoeff_);
-            brineReferenceDensity_[regionIdx] = rho_pure * pow(10.0, nacl_exponent * salinity_[regionIdx]);
+            brineReferenceDensity_[regionIdx] =
+                rho_pure * pow(10.0,
+                               nacl_exponent * salinity_[regionIdx][SaltIndex::NA]);
         }
         else {
-            brineReferenceDensity_[regionIdx] = Brine::liquidDensity(T_ref, P_ref, salinity_[regionIdx], extrapolate);
+            brineReferenceDensity_[regionIdx] =
+                Brine::liquidDensityLC(T_ref,
+                                       P_ref,
+                                       salinity_[regionIdx],
+                                       extrapolate);
         }
         gasReferenceDensity_[regionIdx] = CO2::gasDensity(co2Tables, T_ref, P_ref, extrapolate);
     }
@@ -175,6 +185,19 @@ setEzrokhiDenCoeff(const std::vector<EzrokhiTable>& denaqa)
     ezrokhiDenNaClCoeff_ = {static_cast<Scalar>(denaqa[0].getC0("NACL")),
                             static_cast<Scalar>(denaqa[0].getC1("NACL")),
                             static_cast<Scalar>(denaqa[0].getC2("NACL"))};
+}
+
+template <class Scalar, template<class> class Storage>
+OPM_HOST_DEVICE void
+Co2GasPvt<Scalar, Storage>::
+setSaltComponents(const SaltArray<double>& salinitc)
+{
+    if (salinity_.empty()) {
+        throw std::runtime_error("The salt components are empty");
+    }
+    for (auto& saltElem : salinity_) {
+        saltElem = salinitc;
+    }
 }
 
 template class Co2GasPvt<double>;
