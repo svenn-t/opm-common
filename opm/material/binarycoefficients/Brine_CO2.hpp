@@ -33,6 +33,7 @@
 #include <opm/common/ErrorMacros.hpp>
 #include <opm/common/TimingMacros.hpp>
 #include <opm/common/utility/gpuDecorators.hpp>
+#include <opm/common/utility/SaltArray.hpp>
 
 #include <array>
 #include <numbers>
@@ -47,8 +48,9 @@ namespace BinaryCoeff {
 template<class Scalar, class H2O, class CO2, bool verbose = true>
 class Brine_CO2 {
     typedef ::Opm::IdealGas<Scalar> IdealGas;
-    static const int liquidPhaseIdx = 0; // index of the liquid phase
-    static const int gasPhaseIdx = 1; // index of the gas phase
+    static constexpr int liquidPhaseIdx = 0; // index of the liquid phase
+    static constexpr int gasPhaseIdx = 1; // index of the gas phase
+    static constexpr Scalar invMmH2O = 55.508;  // inverse H2O molar mass
 
 public:
     /*!
@@ -113,7 +115,7 @@ public:
     calculateMoleFractions(const CO2Params& params,
                            const Evaluation& temperature,
                            const Evaluation& pg,
-                           const Evaluation& salinity,
+                           const SaltArray<Evaluation>& salinity,
                            const int knownPhaseIdx,
                            Evaluation& xlCO2,
                            Evaluation& ygH2O,
@@ -124,36 +126,53 @@ public:
 
         // Iterate or not?
         bool iterate = false;
-        if ((activityModel == 1 && salinity > 0.0) || (activityModel == 2 && temperature > 372.15)) {
+        if ((activityModel == 1 && salinity.any_nonzero())
+            || (activityModel == 2 && temperature > 372.15)) {
             iterate = true;
         }
 
         // If both phases are present the mole fractions in each phase can be calculate with the mutual solubility
         // function
         if (knownPhaseIdx < 0) {
-            Evaluation molalityNaCl = massFracToMolality_(salinity); // mass fraction to molality of NaCl
+            auto molalityNaCl = massFracToMolality_(salinity);
+            // mass fraction to molality of NaCl
 
             // Duan-Sun model as given in Spycher & Pruess (2005) have a different fugacity coefficient formula and
             // activity coefficient definition (not a true activity coefficient but a ratio).
             // Technically only valid below T = 100 C, but we use low-temp. parameters and formulas even above 100 C as
             // an approximation.
             if (activityModel == 3) {
-                auto [xCO2, yH2O] = mutualSolubilitySpycherPruess2005_(params, temperature, pg, molalityNaCl, extrapolate);
+                auto [xCO2, yH2O] =
+                    mutualSolubilitySpycherPruess2005_(params,
+                                                       temperature,
+                                                       pg,
+                                                       molalityNaCl,
+                                                       extrapolate);
                 xlCO2 = xCO2;
                 ygH2O = yH2O;
-
-            }
-            else {
+            } else {
                 // Fixed-point iterations to calculate solubility
                 if (iterate) {
-                    auto [xCO2, yH2O] = fixPointIterSolubility_(params, temperature, pg, molalityNaCl, activityModel, extrapolate);
+                    auto [xCO2, yH2O] =
+                        fixPointIterSolubility_(params,
+                                                temperature,
+                                                pg,
+                                                molalityNaCl,
+                                                activityModel,
+                                                extrapolate);
                     xlCO2 = xCO2;
                     ygH2O = yH2O;
                 }
 
                 // Solve mutual solubility equation with back substitution (no need for iterations)
                 else {
-                    auto [xCO2, yH2O] = nonIterSolubility_(params, temperature, pg, molalityNaCl, activityModel, extrapolate);
+                    auto [xCO2, yH2O] =
+                        nonIterSolubility_(params,
+                                           temperature,
+                                           pg,
+                                           molalityNaCl,
+                                           activityModel,
+                                           extrapolate);
                     xlCO2 = xCO2;
                     ygH2O = yH2O;
                 }
@@ -164,9 +183,17 @@ public:
         // and the virtual equilibrium mole fraction of water in the non-existing gas phase can be estimated
         // with the mutual solubility function
         else if (knownPhaseIdx == liquidPhaseIdx && activityModel == 3) {
-            Evaluation x_NaCl = salinityToMolFrac_(salinity);
-            const Evaluation& A = computeA_(params, temperature, pg, Evaluation(0.0), Evaluation(0.0), false, extrapolate, true);
-            ygH2O = A * (1 - xlCO2 - x_NaCl);
+            auto x_NaCl = massFracToMolFrac_(salinity);
+            const Evaluation& A =
+                computeA_(params,
+                          temperature,
+                          pg,
+                          Evaluation(0.0),
+                          Evaluation(0.0),
+                          false,
+                          extrapolate,
+                          true);
+            ygH2O = A * (1 - xlCO2 - x_NaCl.sum());
         }
 
         // if only gas phase is present the mole fraction of water in the gas phase is given and
@@ -174,9 +201,17 @@ public:
         // with the mutual solubility function
         else if (knownPhaseIdx == gasPhaseIdx && activityModel == 3) {
             //y_H2o = fluidstate.
-            Evaluation x_NaCl = salinityToMolFrac_(salinity);
-            const Evaluation& A = computeA_(params, temperature, pg, Evaluation(0.0), Evaluation(0.0), false, extrapolate, true);
-            xlCO2 = 1 - x_NaCl - ygH2O / A;
+            auto x_NaCl = massFracToMolFrac_(salinity);
+            const Evaluation& A =
+                computeA_(params,
+                          temperature,
+                          pg,
+                          Evaluation(0.0),
+                          Evaluation(0.0),
+                          false,
+                          extrapolate,
+                          true);
+            xlCO2 = 1.0 - x_NaCl.sum() - ygH2O / A;
         }
     }
 
@@ -527,15 +562,23 @@ private:
      * \param salinity the salinity [kg NaCl / kg solution]
      */
     template <class Evaluation>
-    OPM_HOST_DEVICE static Evaluation salinityToMolFrac_(const Evaluation& salinity) {
+    OPM_HOST_DEVICE static SaltArray<Evaluation>
+    massFracToMolFrac_(const SaltArray<Evaluation>& Xsalt)
+    {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Scalar Mw = H2O::molarMass(); /* molecular weight of water [kg/mol] */
-        const Scalar Ms = 58.44e-3; /* molecular weight of NaCl  [kg/mol] */
-
-        const Evaluation X_NaCl = salinity;
-        /* salinity: conversion from mass fraction to mol fraction */
-        const Evaluation x_NaCl = -Mw * X_NaCl / ((Ms - Mw) * X_NaCl - Ms);
-        return x_NaCl;
+        Evaluation sum = 1.0;
+        SaltArray<Evaluation> molFracArray;
+        for (std::size_t i = 0; i < Xsalt.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            auto mMion = saltMolarMass<Scalar>(sIdx);
+            molFracArray[sIdx] = Xsalt[sIdx] / mMion;
+            sum += molFracArray[sIdx] * Mw - Xsalt[sIdx];
+        }
+        for (auto& elem : molFracArray) {
+            elem /= sum;
+        }
+        return molFracArray;
     }
 
     /*!
@@ -548,15 +591,25 @@ private:
     OPM_HOST_DEVICE static Evaluation moleFracToMolality_(const Evaluation& x_NaCl)
     {
         // conversion from mol fraction to molality (dissolved CO2 neglected)
-        return 55.508 * x_NaCl / (1 - x_NaCl);
+        return invMmH2O * x_NaCl / (1 - x_NaCl);
     }
 #endif
 
     template <class Evaluation>
-    OPM_HOST_DEVICE static Evaluation massFracToMolality_(const Evaluation& X_NaCl)
+    OPM_HOST_DEVICE static SaltArray<Evaluation>
+    massFracToMolality_(const SaltArray<Evaluation>& Xsalt)
     {
-        const Scalar MmNaCl = 58.44e-3;
-        return X_NaCl / (MmNaCl * (1 - X_NaCl));
+        SaltArray<Evaluation> molalityArray;
+        for (std::size_t i = 0; i < Xsalt.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            molalityArray[sIdx] = Xsalt[sIdx] / saltMolarMass<Scalar>(sIdx);
+        }
+
+        Evaluation sum = 1.0 - Xsalt.sum();
+        for (auto& elem : molalityArray) {
+            elem /= sum;
+        }
+        return molalityArray;
     }
 
     /*!
@@ -565,32 +618,48 @@ private:
     * \param x_NaCl mole fraction of NaCL in brine [mol/mol]
     */
     template <class Evaluation>
-    OPM_HOST_DEVICE static Evaluation molalityToMoleFrac_(const Evaluation& m_NaCl)
+    OPM_HOST_DEVICE static SaltArray<Evaluation>
+    molalityToMoleFrac_(const SaltArray<Evaluation>& mSalt)
     {
-        // conversion from molality to mole fractio (dissolved CO2 neglected)
-        return m_NaCl / (55.508 + m_NaCl);
+        Evaluation sum = 1.0;
+        const Scalar Mw = H2O::molarMass();
+        SaltArray<Evaluation> molFracArray;
+        for (std::size_t i = 0; i < mSalt.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            molFracArray[sIdx] = Mw * mSalt[sIdx];
+            sum += molFracArray[sIdx];
+        }
+        for (auto& elem : molFracArray) {
+            elem /= sum;
+        }
+        return molFracArray;
     }
 
     /*!
     * \brief Fixed-point iterations for high-temperature cases
     */
     template <class Evaluation, class CO2Parameters>
-    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation> fixPointIterSolubility_(const CO2Parameters& params,
-                                                                                     const Evaluation& temperature,
-                                                                                     const Evaluation& pg,
-                                                                                     const Evaluation& m_NaCl,
-                                                                                     const int& activityModel,
-                                                                                     bool extrapolate = false)
+    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation>
+    fixPointIterSolubility_(const CO2Parameters& params,
+                            const Evaluation& temperature,
+                            const Evaluation& pg,
+                            const SaltArray<Evaluation>& mSalt,
+                            const int& activityModel,
+                            bool extrapolate = false)
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
-	    // Start point for fixed-point iterations as recommended below in section 2.2
-        Evaluation yH2O = H2O::vaporPressure(temperature) / pg;  // ideal mixing
-        Evaluation xCO2 = 0.009;  // same as ~0.5 mol/kg
-        Evaluation gammaNaCl = 1.0;  // default salt activity coeff = 1.0
+        // Start point for fixed-point iterations as recommended below in section 2.2
+        Evaluation yH2O = H2O::vaporPressure(temperature) / pg; // ideal mixing
+        Evaluation xCO2 = 0.009; // same as ~0.5 mol/kg
+        Evaluation gammaNaCl = 1.0; // default salt activity coeff = 1.0
 
         // We can pre-calculate Duan-Sun, Spycher & Pruess (2009) salt activity coeff.
-        if (m_NaCl > 0.0 && activityModel == 2) {
-            gammaNaCl = activityCoefficientSalt_(temperature, pg, m_NaCl, Evaluation(0.0), activityModel);
+        if (mSalt.any_nonzero() && activityModel == 2) {
+            gammaNaCl = activityCoefficientSalt_(temperature,
+                                                 pg,
+                                                 mSalt,
+                                                 Evaluation(0.0),
+                                                 activityModel);
         }
 
         // Options
@@ -605,13 +674,26 @@ private:
         // Fixed-point loop x_i+1 = F(x_i)
         for (int i = 0; i < max_iter; ++i) {
             // Calculate activity coefficient for Rumpf et al (1994) model
-            if (m_NaCl > 0.0 && activityModel == 1) {
-                gammaNaCl = activityCoefficientSalt_(temperature, pg, m_NaCl, xCO2, activityModel);
+            if (mSalt.any_nonzero() && activityModel == 1) {
+                gammaNaCl = activityCoefficientSalt_(temperature,
+                                                     pg,
+                                                     mSalt,
+                                                     xCO2,
+                                                     activityModel);
             }
 
             // F(x_i) is the mutual solubilities
-            auto [xCO2_new, yH2O_new] = mutualSolubility_(params, temperature, pg, xCO2, yH2O, m_NaCl, gammaNaCl, highTemp,
-                                                          iterate, extrapolate);
+            auto [xCO2_new, yH2O_new] =
+                mutualSolubility_(params,
+                                  temperature,
+                                  pg,
+                                  xCO2,
+                                  yH2O,
+                                  mSalt,
+                                  gammaNaCl,
+                                  highTemp,
+                                  iterate,
+                                  extrapolate);
 
             // Check for convergence
             if (abs(xCO2_new - xCO2) < tol && abs(yH2O_new - yH2O) < tol) {
@@ -634,25 +716,39 @@ private:
     * \brief Fixed-point iterations for high-temperature cases
     */
     template <class Evaluation, class CO2Parameters>
-    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation> nonIterSolubility_(const CO2Parameters& params,
-                                                                                const Evaluation& temperature,
-                                                                                const Evaluation& pg,
-                                                                                const Evaluation& m_NaCl,
-                                                                                const int& activityModel,
-                                                                                bool extrapolate = false)
+    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation>
+    nonIterSolubility_(const CO2Parameters& params,
+                       const Evaluation& temperature,
+                       const Evaluation& pg,
+                       const SaltArray<Evaluation>& mSalt,
+                       const int& activityModel,
+                       bool extrapolate = false)
     {
         // Calculate activity coefficient for salt
         Evaluation gammaNaCl = 1.0;
-        if (m_NaCl > 0.0 && activityModel > 0 && activityModel < 3) {
-            gammaNaCl = activityCoefficientSalt_(temperature, pg, m_NaCl, Evaluation(0.0), activityModel);
+        if (mSalt.any_nonzero() && activityModel > 0 && activityModel < 3) {
+            gammaNaCl = activityCoefficientSalt_(temperature,
+                                                 pg,
+                                                 mSalt,
+                                                 Evaluation(0.0),
+                                                 activityModel);
         }
 
         // Calculate mutual solubility.
         // Note that we don't use xCO2 and yH2O input in low-temperature case, so we set them to 0.0
         const bool highTemp = false;
         const bool iterate = false;
-        auto [xCO2, yH2O] = mutualSolubility_(params, temperature, pg, Evaluation(0.0), Evaluation(0.0), m_NaCl, gammaNaCl,
-                                              highTemp, iterate, extrapolate);
+        auto [xCO2, yH2O] =
+            mutualSolubility_(params,
+                              temperature,
+                              pg,
+                              Evaluation(0.0),
+                              Evaluation(0.0),
+                              mSalt,
+                              gammaNaCl,
+                              highTemp,
+                              iterate,
+                              extrapolate);
 
         return {xCO2, yH2O};
     }
@@ -661,31 +757,45 @@ private:
     * \brief Mutual solubility according to Spycher & Pruess (2009)
     */
     template <class Evaluation, class CO2Parameters>
-    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation> mutualSolubility_(const CO2Parameters& params,
-                                                                               const Evaluation& temperature,
-                                                                               const Evaluation& pg,
-                                                                               const Evaluation& xCO2,
-                                                                               const Evaluation& yH2O,
-                                                                               const Evaluation& m_NaCl,
-                                                                               const Evaluation& gammaNaCl,
-                                                                               const bool& highTemp,
-                                                                               const bool& iterate,
-                                                                               bool extrapolate = false)
+    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation>
+    mutualSolubility_(const CO2Parameters& params,
+                      const Evaluation& temperature,
+                      const Evaluation& pg,
+                      const Evaluation& xCO2,
+                      const Evaluation& yH2O,
+                      const SaltArray<Evaluation>& mSalt,
+                      const Evaluation& gammaNaCl,
+                      const bool& highTemp,
+                      const bool& iterate,
+                      bool extrapolate = false)
     {
         // Calculate A and B (without salt effect); Eqs. (8) and (9)
-        const Evaluation& A = computeA_(params, temperature, pg, yH2O, xCO2, highTemp, extrapolate);
-        Evaluation B = computeB_(params, temperature, pg, yH2O, xCO2, highTemp, extrapolate);
+        const Evaluation& A = computeA_(params,
+                                        temperature,
+                                        pg,
+                                        yH2O,
+                                        xCO2,
+                                        highTemp,
+                                        extrapolate);
+        Evaluation B = computeB_(params,
+                                 temperature,
+                                 pg,
+                                 yH2O,
+                                 xCO2,
+                                 highTemp,
+                                 extrapolate);
 
         // Add salt effect to B, Eq. (17)
         B /= gammaNaCl;
 
         // Compute yH2O and xCO2, Eqs. (B-7) and (B-2)
-        Evaluation yH2O_new = (1. - B) * 55.508 / ((1. / A - B) * (2 * m_NaCl + 55.508) + 2 * m_NaCl * B);
+        Evaluation yH2O_new =
+            (1. - B) * invMmH2O
+            / ((1. / A - B) * (mSalt.sum() + invMmH2O) + mSalt.sum() * B);
         Evaluation xCO2_new;
         if (iterate) {
             xCO2_new = B * (1 - yH2O);
-        }
-        else {
+        } else {
             xCO2_new = B * (1 - yH2O_new);
         }
 
@@ -696,32 +806,52 @@ private:
     * \brief Mutual solubility according to Spycher & Pruess (2009)
     */
     template <class Evaluation, class CO2Parameters>
-    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation> mutualSolubilitySpycherPruess2005_(const CO2Parameters& params,
-                                                                                                const Evaluation& temperature,
-                                                                                                const Evaluation& pg,
-                                                                                                const Evaluation& m_NaCl,
-                                                                                                bool extrapolate = false)
+    OPM_HOST_DEVICE static std::pair<Evaluation, Evaluation>
+    mutualSolubilitySpycherPruess2005_(const CO2Parameters& params,
+                                       const Evaluation& temperature,
+                                       const Evaluation& pg,
+                                       const SaltArray<Evaluation>& mSalt,
+                                       bool extrapolate = false)
     {
         // Calculate A and B (without salt effect); Eqs. (8) and (9)
-        const Evaluation& A = computeA_(params, temperature, pg, Evaluation(0.0), Evaluation(0.0), false, extrapolate, true);
-        const Evaluation& B = computeB_(params, temperature, pg, Evaluation(0.0), Evaluation(0.0), false, extrapolate, true);
+        const Evaluation& A = computeA_(params,
+                                        temperature,
+                                        pg,
+                                        Evaluation(0.0),
+                                        Evaluation(0.0),
+                                        false,
+                                        extrapolate,
+                                        true);
+        const Evaluation& B = computeB_(params,
+                                        temperature,
+                                        pg,
+                                        Evaluation(0.0),
+                                        Evaluation(0.0),
+                                        false,
+                                        extrapolate,
+                                        true);
 
         // Mole fractions and molality in pure water
         Evaluation yH2O = (1 - B) / (1. / A - B);
         Evaluation xCO2 = B * (1 - yH2O);
 
         // Modifiy mole fractions with Duan-Sun "activity coefficient" if salt is involved
-        if (m_NaCl > 0.0) {
-            const Evaluation& gammaNaCl = activityCoefficientSalt_(temperature, pg, m_NaCl, Evaluation(0.0), 3);
+        if (mSalt.any_nonzero()) {
+            const Evaluation& gammaNaCl =
+                activityCoefficientSalt_(temperature,
+                                         pg,
+                                         mSalt,
+                                         Evaluation(0.0),
+                                         3);
 
             // Molality with salt
-            Evaluation mCO2 = (xCO2 * 55.508) / (1 - xCO2);  // pure water
+            Evaluation mCO2 = (xCO2 * invMmH2O) / (1 - xCO2); // pure water
             mCO2 /= gammaNaCl;
-            xCO2 = mCO2 / (m_NaCl + 55.508 + mCO2);
+            xCO2 = mCO2 / (mSalt.sum() + invMmH2O + mCO2);
 
             // new yH2O with salt
-            const Evaluation& xNaCl = molalityToMoleFrac_(m_NaCl);
-            yH2O = A * (1 - xCO2 - xNaCl);
+            const auto& xSalt = molalityToMoleFrac_(mSalt);
+            yH2O = A * (1 - xCO2 - xSalt.sum());
         }
 
         return {xCO2, yH2O};
@@ -808,48 +938,59 @@ private:
         // Eq. (11)
         const Evaluation& pg_bar = pg / 1.e5;
         const Scalar R = IdealGas::R * 10;
-        return phi_CO2 * pg_bar / (55.508 * k0_CO2 * gammaCO2) * exp(-deltaP * v_av_CO2 / (R * temperature));
+        return phi_CO2 * pg_bar / (invMmH2O * k0_CO2 * gammaCO2) * exp(-deltaP * v_av_CO2 / (R * temperature));
     }
 
     /*!
     * \brief Activity model of salt in Spycher & Pruess (2009)
     */
     template <class Evaluation>
-    OPM_HOST_DEVICE static Evaluation activityCoefficientSalt_(const Evaluation& temperature,
-                                                               const Evaluation& pg,
-                                                               const Evaluation& m_NaCl,
-                                                               const Evaluation& xCO2,
-                                                               const int& activityModel)
+    OPM_HOST_DEVICE static Evaluation
+    activityCoefficientSalt_(const Evaluation& temperature,
+                             const Evaluation& pg,
+                             const SaltArray<Evaluation>& mSalt,
+                             const Evaluation& xCO2,
+                             const int& activityModel)
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
-	    // Lambda and xi parameter for either Rumpf et al (1994) (activityModel = 1) or Duan-Sun as modified by Spycher
-        // & Pruess (2009) (activityModel = 2) or Duan & Sun (2003) as given in Spycher & Pruess (2005) (activityModel =
-        // 3)
+        // Lambda and xi parameter for either Rumpf et al (1994) (activityModel = 1) or Duan-Sun
+        // as modified by Spycher & Pruess (2009) (activityModel = 2) or Duan & Sun (2003) as
+        // given in Spycher & Pruess (2005) (activityModel = 3)
         Evaluation lambda;
         Evaluation xi;
         Evaluation convTerm;
+        Evaluation addTerm;
         if (activityModel == 1) {
             lambda = computeLambdaRumpfetal_(temperature);
             xi = -0.0028 * 3.0;
-            Evaluation m_CO2 = xCO2 * (2 * m_NaCl + 55.508) / (1 - xCO2);
-            convTerm = (1 + (m_CO2 + 2 * m_NaCl) / 55.508) / (1 + m_CO2 / 55.508);
-        }
-        else if (activityModel == 2) {
+            Evaluation mCO2 = xCO2 * (invMmH2O + mSalt.sum()) / (1.0 - xCO2);
+            convTerm = (1.0 + (mCO2 + mSalt.sum()) / invMmH2O) / (1.0 + mCO2 / invMmH2O);
+            addTerm = -0.0;
+        } else if (activityModel == 2) {
             lambda = computeLambdaSpycherPruess2009_(temperature);
             xi = computeXiSpycherPruess2009_(temperature);
-            convTerm = 1 + 2 * m_NaCl / 55.508;
-        }
-        else if (activityModel == 3) {
+            convTerm = 1 + mSalt.sum() / invMmH2O;
+            addTerm = -0.07 * mSalt[SaltIndex::SO4];
+        } else if (activityModel == 3) {
             lambda = computeLambdaDuanSun_(temperature, pg);
             xi = computeXiDuanSun_(temperature, pg);
             convTerm = 1.0;
-        }
-        else {
-            OPM_THROW(std::invalid_argument, "Activity model for salt-out effect has not been implemented!.");
+            addTerm = -0.07 * mSalt[SaltIndex::SO4];
+        } else {
+            OPM_THROW(std::invalid_argument,
+                      "Activity model for salt-out effect has not been implemented!.");
         }
 
         // Eq. (18)
-        const Evaluation& lnGamma = 2 * lambda * m_NaCl + xi * m_NaCl * m_NaCl;
+        const auto& mNa = mSalt[SaltIndex::NA];
+        const auto& mK = mSalt[SaltIndex::K];
+        const auto& mCa = mSalt[SaltIndex::CA];
+        const auto& mMg = mSalt[SaltIndex::MG];
+        const auto& mCl = mSalt[SaltIndex::CL];
+        const Evaluation& lnGamma =
+            2 * lambda * (mNa + mK + 2 * mCa + 2 * mMg)
+            + xi * mCl * (mNa + mK + mCa + mMg)
+            + addTerm;
 
         // Eq. (18), return activity coeff. on mole-fraction scale
         return convTerm * exp(lnGamma);
