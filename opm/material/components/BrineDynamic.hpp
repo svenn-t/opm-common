@@ -90,6 +90,34 @@ public:
         return M1*mM_salt()/(mM_salt() + X2*(M1 - mM_salt()));
     }
 
+    template <class Evaluation>
+    OPM_HOST_DEVICE static Evaluation
+    invAvgMolarMassFromMassFrac(const SaltArray<Evaluation>& salinity)
+    {
+        const Scalar mH2O = H2O::molarMass();
+        Evaluation s = 1 / mH2O;
+        for (std::size_t i = 0; i < salinity.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            auto mIon = saltMolarMass<Scalar>(sIdx);
+            s += salinity[sIdx] * ((mH2O - mIon) / (mH2O * mIon));
+        }
+        return s;
+    }
+
+    template <class Evaluation>
+    OPM_HOST_DEVICE static Evaluation
+    avgMolarMassFromMoleFrac(const SaltArray<Evaluation>& salinity)
+    {
+        const Scalar mH2O = H2O::molarMass();
+        Evaluation s = mH2O;
+        for (std::size_t i = 0; i < salinity.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            auto mIon = saltMolarMass<Scalar>(sIdx);
+            s += salinity[sIdx] * (mIon - mH2O);
+        }
+        return s;
+    }
+
     /*!
      * \copydoc H2O::criticalTemperature
      */
