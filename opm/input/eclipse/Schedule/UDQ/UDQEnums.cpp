@@ -307,7 +307,7 @@ UDQVarType targetType(const std::string& keyword)
         return UDQVarType::NONE;
     }
 
-    if (keyword.substr(0,3) == "TU_") {
+    if (keyword.starts_with("TU")) {
         return UDQVarType::TABLE_LOOKUP;
     }
 
