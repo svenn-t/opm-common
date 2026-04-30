@@ -704,6 +704,7 @@ BOOST_AUTO_TEST_CASE(ENUM_CONVERSION) {
     BOOST_CHECK(UDQ::targetType("RBHP") == UDQVarType::REGION_VAR);
     BOOST_CHECK(UDQ::targetType("ABHP") == UDQVarType::AQUIFER_VAR);
     BOOST_CHECK(UDQ::targetType("SBHP") == UDQVarType::SEGMENT_VAR);
+    BOOST_CHECK(UDQ::targetType("TUPOLEV") == UDQVarType::TABLE_LOOKUP);
 
     BOOST_REQUIRE_THROW( UDQ::actionType("INVALID_ACTION"), std::invalid_argument);
     BOOST_CHECK(UDQ::actionType("DEFINE") == UDQAction::DEFINE );

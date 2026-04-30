@@ -213,3 +213,35 @@ UDT
     BOOST_CHECK_THROW(Schedule schedule(deck, grid, fp, NumericalAquifers{}, runspec, std::make_shared<Python>()),
                       Opm::OpmInputError);
 }
+
+BOOST_AUTO_TEST_CASE(UseUDT_In_UDQ)
+{
+    const auto deck = Parser{}.parseString(R"(RUNSPEC
+UDTDIMS
+  1 10 10 1 /
+SCHEDULE
+UDT
+ 'TUFBHP' 1 /
+ 'LC'  100.0  500.0 / -- FOPR values
+       100.0  180.0 / -- WBHP values
+/
+/
+
+UDQ
+ASSIGN WU_WBHP 0 /
+DEFINE WU_WBHP0 WU_WBHP /
+DEFINE WU_WBHP (TUFBHP[WOPR] UMIN WBHP) UMIN WU_WBHP0 /
+/
+)");
+
+    const auto runspec = Runspec { deck };
+    const auto table = TableManager { deck };
+
+    auto grid = EclipseGrid { 10, 10, 10 };
+
+    const auto fp = FieldPropsManager {
+        deck, Phases{true, true, true}, grid, table
+    };
+
+    BOOST_CHECK_NO_THROW(Schedule schedule(deck, grid, fp, NumericalAquifers{}, runspec, std::make_shared<Python>()));
+}
