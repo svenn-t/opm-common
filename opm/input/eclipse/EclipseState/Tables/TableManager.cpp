@@ -700,7 +700,7 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
             return;
         }
 
-        if (!deck.count(keywordName)) {
+        if (deck.count(keywordName) > 1) {
             complainAboutAmbiguousKeyword(deck, keywordName);
             return;
         }
@@ -724,14 +724,42 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
             throw OpmInputError(reason, tableKeyword.location());
         }
         const std::size_t numRegions = numTables;
+        const std::size_t maxRows = m_tabdims.getNumPressureNodes();
+        constexpr std::size_t numColumns = 2;
         for (std::size_t regionIdx = 0; regionIdx < numRegions; ++regionIdx) {
             const auto& indexRecord = tableKeyword.getRecord(2 * regionIdx);
             const auto& dataRecord = tableKeyword.getRecord(2 * regionIdx + 1);
             const auto& dataItem = dataRecord.getItem(0);
-            if (dataItem.data_size() > 0) {
-                std::shared_ptr<PlyshlogTable> table = std::make_shared<PlyshlogTable>(indexRecord, dataRecord);
-                container.addTable(regionIdx, table);
+
+            if ((dataItem.data_size() % numColumns) != 0) {
+                const std::string reason = fmt::format(
+                    "PLYSHLOG table {} must contain complete two-column rows, "
+                    "but {} value(s) were supplied.",
+                    regionIdx + 1, dataItem.data_size());
+                throw OpmInputError(reason, tableKeyword.location());
             }
+
+            const std::size_t numRows = dataItem.data_size() / numColumns;
+            if ((numRows < 2) || (numRows > maxRows)) {
+                const std::string reason = fmt::format(
+                    "PLYSHLOG table {} must contain at least 2 and no more "
+                    "than NPPVT={} row(s), but {} row(s) were supplied.",
+                    regionIdx + 1, maxRows, numRows);
+                throw OpmInputError(reason, tableKeyword.location());
+            }
+
+            for (std::size_t itemIdx = 0; itemIdx < dataItem.data_size(); ++itemIdx) {
+                if (dataItem.defaultApplied(itemIdx)) {
+                    const std::string reason = fmt::format(
+                        "PLYSHLOG table {} must contain complete rows; "
+                        "defaulted values are not allowed in the data table.",
+                        regionIdx + 1);
+                    throw OpmInputError(reason, tableKeyword.location());
+                }
+            }
+
+            std::shared_ptr<PlyshlogTable> table = std::make_shared<PlyshlogTable>(indexRecord, dataRecord);
+            container.addTable(regionIdx, table);
         }
     }
 
