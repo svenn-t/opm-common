@@ -1,12 +1,15 @@
 {
   "name": "PLYSHLOG",
-  "size": 2,
+  "size": {
+    "keyword": "TABDIMS",
+    "item": "NTPVT"
+  },
   "sections": [
     "SPECIAL",
     "PROPS",
     "SCHEDULE"
   ],
-  "records": [
+  "alternating_records": [
     [
       {
         "name": "REF_POLYMER_CONCENTRATION",

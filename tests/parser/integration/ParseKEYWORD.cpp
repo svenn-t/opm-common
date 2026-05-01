@@ -31,6 +31,8 @@
 #include <opm/input/eclipse/EclipseState/Tables/SgofTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/SlgofTable.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/SwofTable.hpp>
+#include <opm/input/eclipse/EclipseState/Tables/PlyshlogTable.hpp>
+#include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
 #include <opm/input/eclipse/EclipseState/Tables/TlpmixpaTable.hpp>
 
 #include <opm/input/eclipse/Python/Python.hpp>
@@ -717,6 +719,47 @@ BOOST_AUTO_TEST_CASE( PLYSHLOG ) {
     BOOST_CHECK_EQUAL( 1.2 , itemData.get< double >(3) );
     BOOST_CHECK_EQUAL( 1.e3 , itemData.get< double >(4) );
     BOOST_CHECK_EQUAL( 2.4 , itemData.get< double >(5) );
+}
+
+BOOST_AUTO_TEST_CASE( PLYSHLOG_MULTI_REGION ) {
+    // Verify that PLYSHLOG can be parsed when more than one PVT region
+    // (TABDIMS::NTPVT > 1) is present.
+    Parser parser;
+    std::string deckFile(pathprefix() + "POLYMER/plyshlog_multi.data");
+    auto deck = parser.parseFile(deckFile);
+    const auto& kw = deck["PLYSHLOG"].back();
+
+    // Two regions => two (indexRecord, dataRecord) pairs => four records.
+    BOOST_CHECK_EQUAL( 4U, kw.size() );
+
+    // Region 1
+    const auto& rec1 = kw.getRecord(0);
+    BOOST_CHECK_EQUAL( 0.5, rec1.getItem("REF_POLYMER_CONCENTRATION").get<double>(0) );
+    const auto& data1 = kw.getRecord(1).getItem(0);
+    BOOST_CHECK_EQUAL( 1.0e-7, data1.get<double>(0) );
+    BOOST_CHECK_EQUAL( 1.0,    data1.get<double>(1) );
+    BOOST_CHECK_EQUAL( 1.0e3,  data1.get<double>(18) );
+    BOOST_CHECK_EQUAL( 2.4,    data1.get<double>(19) );
+
+    // Region 2
+    const auto& rec2 = kw.getRecord(2);
+    BOOST_CHECK_EQUAL( 0.6, rec2.getItem("REF_POLYMER_CONCENTRATION").get<double>(0) );
+    const auto& data2 = kw.getRecord(3).getItem(0);
+    BOOST_CHECK_EQUAL( 1.0e-7, data2.get<double>(0) );
+    BOOST_CHECK_EQUAL( 1.0,    data2.get<double>(1) );
+    BOOST_CHECK_EQUAL( 1.0e3,  data2.get<double>(18) );
+    BOOST_CHECK_EQUAL( 2.5,    data2.get<double>(19) );
+
+    // Also check that the TableManager picks up one PlyshlogTable per region.
+    TableManager tableManager(deck);
+    const auto& tables = tableManager.getPlyshlogTables();
+    BOOST_CHECK_EQUAL( 2U, tables.size() );
+
+    const auto& t0 = tables.getTable<PlyshlogTable>(0);
+    BOOST_CHECK_EQUAL( 0.5, t0.getRefPolymerConcentration() );
+
+    const auto& t1 = tables.getTable<PlyshlogTable>(1);
+    BOOST_CHECK_EQUAL( 0.6, t1.getRefPolymerConcentration() );
 }
 
 BOOST_AUTO_TEST_CASE( PLYVISC ) {

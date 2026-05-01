@@ -1,0 +1,35 @@
+TABDIMS
+-- NTSFUN  NTPVT
+    1       2     /
+
+PLYSHLOG
+-- reference conditions for region 1
+    0.5
+/
+-- velocity multiplier for region 1
+0.0000001  1.0
+0.000001   1.1
+0.0001     1.3
+0.001      1.47
+0.01       1.67
+0.1        2.0
+1.0        2.2
+10.0       2.3
+100.0      2.4
+1000.0     2.4
+/
+-- reference conditions for region 2
+    0.6
+/
+-- velocity multiplier for region 2
+0.0000001  1.0
+0.000001   1.2
+0.0001     1.4
+0.001      1.5
+0.01       1.7
+0.1        2.1
+1.0        2.3
+10.0       2.4
+100.0      2.5
+1000.0     2.5
+/
