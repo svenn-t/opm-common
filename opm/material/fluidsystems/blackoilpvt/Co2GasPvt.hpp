@@ -130,9 +130,9 @@ public:
      * \brief Initialize the reference densities of all fluids for a given PVT region
      */
     OPM_HOST_DEVICE void setReferenceDensities(unsigned regionIdx,
-                               Scalar rhoRefBrine,
-                               Scalar rhoRefGas,
-                               Scalar /*rhoRefWater*/);
+                                               Scalar rhoRefBrine,
+                                               Scalar rhoRefGas,
+                                               Scalar /*rhoRefWater*/);
 
     /*!
      * \brief Specify whether the PVT model should consider that the water component can
@@ -169,15 +169,21 @@ public:
     OPM_HOST_DEVICE Scalar hVap(unsigned ) const
     { return 0.0;  }
 
+    /*! \brief Indicates whether this PVT object computes the gas internal
+     *         energy via a thermal mixing model. \c Co2GasPvt always uses
+     *         the simple direct-internal-energy path, so returns \c false. */
+    OPM_HOST_DEVICE static constexpr bool mixingEnergy()
+    { return false; }
+
     /*!
      * \brief Returns the specific enthalpy [J/kg] of gas given a set of parameters.
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation internalEnergy(unsigned regionIdx,
-                        const Evaluation& temperature,
-                        const Evaluation& pressure,
-                        const Evaluation& rv,
-                        const Evaluation& rvw) const
+                                              const Evaluation& temperature,
+                                              const Evaluation& pressure,
+                                              const Evaluation& rv,
+                                              const Evaluation& rvw) const
     {
         OPM_TIMEBLOCK_LOCAL(internalEnergy, Subsystem::PvtProps);
         if (gastype_ == Co2StoreConfig::GasMixingType::NONE) {
@@ -203,10 +209,10 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation viscosity(unsigned regionIdx,
-                         const Evaluation& temperature,
-                         const Evaluation& pressure,
-                         const Evaluation& /*Rv*/,
-                         const Evaluation& /*Rvw*/) const
+                                         const Evaluation& temperature,
+                                         const Evaluation& pressure,
+                                         const Evaluation& /*Rv*/,
+                                         const Evaluation& /*Rvw*/) const
     { return saturatedViscosity(regionIdx, temperature, pressure); }
 
     /*!
@@ -214,8 +220,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedViscosity(unsigned /*regionIdx*/,
-                                  const Evaluation& temperature,
-                                  const Evaluation& pressure) const
+                                                  const Evaluation& temperature,
+                                                  const Evaluation& pressure) const
     {
         OPM_TIMEBLOCK_LOCAL(saturatedViscosity, Subsystem::PvtProps);
         // Neglects impact of vaporized water on the visosity
@@ -227,10 +233,10 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation inverseFormationVolumeFactor(unsigned regionIdx,
-                                            const Evaluation& temperature,
-                                            const Evaluation& pressure,
-                                            const Evaluation& rv,
-                                            const Evaluation& rvw) const
+                                                            const Evaluation& temperature,
+                                                            const Evaluation& pressure,
+                                                            const Evaluation& rv,
+                                                            const Evaluation& rvw) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         if (!enableVaporization_) {
@@ -254,8 +260,8 @@ public:
      * \brief Returns the formation volume factor [-] and viscosity [Pa s] of the fluid phase.
      */
     template <class FluidState, class LhsEval = typename FluidState::ValueType>
-    std::pair<LhsEval, LhsEval>
-    inverseFormationVolumeFactorAndViscosity(const FluidState& fluidState, unsigned regionIdx)
+    OPM_HOST_DEVICE std::pair<LhsEval, LhsEval>
+    inverseFormationVolumeFactorAndViscosity(const FluidState& fluidState, unsigned regionIdx) const
     {
         const LhsEval& T = decay<LhsEval>(fluidState.temperature(FluidState::gasPhaseIdx));
         const LhsEval& p = decay<LhsEval>(fluidState.pressure(FluidState::gasPhaseIdx));
@@ -270,8 +276,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedInverseFormationVolumeFactor(unsigned regionIdx,
-                                                     const Evaluation& temperature,
-                                                     const Evaluation& pressure) const
+                                                                     const Evaluation& temperature,
+                                                                     const Evaluation& pressure) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation rvw = rvwSat_(regionIdx, temperature, pressure,
@@ -289,8 +295,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturationPressure(unsigned /*regionIdx*/,
-                                  const Evaluation& /*temperature*/,
-                                  const Evaluation& /*Rvw*/) const
+                                                  const Evaluation& /*temperature*/,
+                                                  const Evaluation& /*Rvw*/) const
     { return 0.0; /* not implemented */ }
 
     /*!
@@ -298,8 +304,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedWaterVaporizationFactor(unsigned regionIdx,
-                                              const Evaluation& temperature,
-                                              const Evaluation& pressure) const
+                                                                const Evaluation& temperature,
+                                                                const Evaluation& pressure) const
     { return rvwSat_(regionIdx, temperature, pressure, Evaluation(salinity_[regionIdx])); }
 
     /*!
@@ -307,9 +313,9 @@ public:
     */
     template <class Evaluation = Scalar>
     OPM_HOST_DEVICE Evaluation saturatedWaterVaporizationFactor(unsigned regionIdx,
-                                              const Evaluation& temperature,
-                                              const Evaluation& pressure,
-                                              const Evaluation& saltConcentration) const
+                                                                const Evaluation& temperature,
+                                                                const Evaluation& pressure,
+                                                                const Evaluation& saltConcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation salinity = salinityFromConcentration(temperature, pressure,
@@ -322,10 +328,10 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedOilVaporizationFactor(unsigned regionIdx,
-                                              const Evaluation& temperature,
-                                              const Evaluation& pressure,
-                                              const Evaluation& /*oilSaturation*/,
-                                              const Evaluation& /*maxOilSaturation*/) const
+                                                              const Evaluation& temperature,
+                                                              const Evaluation& pressure,
+                                                              const Evaluation& /*oilSaturation*/,
+                                                              const Evaluation& /*maxOilSaturation*/) const
     { return rvwSat_(regionIdx, temperature, pressure, Evaluation(salinity_[regionIdx])); }
 
     /*!
@@ -333,14 +339,14 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedOilVaporizationFactor(unsigned regionIdx,
-                                              const Evaluation& temperature,
-                                              const Evaluation& pressure) const
+                                                              const Evaluation& temperature,
+                                                              const Evaluation& pressure) const
     { return rvwSat_(regionIdx, temperature, pressure, Evaluation(salinity_[regionIdx])); }
 
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation diffusionCoefficient(const Evaluation& temperature,
-                                    const Evaluation& pressure,
-                                    unsigned /*compIdx*/) const
+                                                    const Evaluation& pressure,
+                                                    unsigned /*compIdx*/) const
     {
         return BinaryCoeffBrineCO2::gasDiffCoeff(co2Tables, temperature, pressure, extrapolate);
     }
@@ -397,9 +403,9 @@ private:
 
     template <class LhsEval>
     OPM_HOST_DEVICE LhsEval rvwSat_(unsigned regionIdx,
-                    const LhsEval& temperature,
-                    const LhsEval& pressure,
-                    const LhsEval& salinity) const
+                                    const LhsEval& temperature,
+                                    const LhsEval& pressure,
+                                    const LhsEval& salinity) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         if (!enableVaporization_) {
@@ -475,7 +481,7 @@ private:
 
     template <class LhsEval>
     OPM_HOST_DEVICE const LhsEval salinityFromConcentration(const LhsEval&T, const LhsEval& P,
-                                            const LhsEval& saltConcentration) const
+                                                            const LhsEval& saltConcentration) const
     { return saltConcentration/H2O::liquidDensity(T, P, true); }
 
     ContainerT brineReferenceDensity_{};

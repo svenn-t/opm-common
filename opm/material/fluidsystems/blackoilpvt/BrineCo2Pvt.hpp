@@ -199,15 +199,21 @@ public:
         return 0;
     }
 
+    /*! \brief Indicates whether this PVT object computes the water internal
+     *         energy via a thermal mixing model. \c BrineCo2Pvt always uses
+     *         the simple direct-internal-energy path, so returns \c false. */
+    OPM_HOST_DEVICE static constexpr bool mixingEnergy()
+    { return false; }
+
     /*!
      * \brief Returns the specific enthalpy [J/kg] of gas given a set of parameters.
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation internalEnergy(unsigned regionIdx,
-                              const Evaluation& temperature,
-                              const Evaluation& pressure,
-                              const Evaluation& Rs,
-                              const Evaluation& saltConcentration) const
+                                              const Evaluation& temperature,
+                                              const Evaluation& pressure,
+                                              const Evaluation& Rs,
+                                              const Evaluation& saltConcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation salinity = salinityFromConcentration(regionIdx, temperature, pressure, saltConcentration);
@@ -223,9 +229,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation internalEnergy(unsigned regionIdx,
-                        const Evaluation& temperature,
-                        const Evaluation& pressure,
-                        const Evaluation& Rs) const
+                                              const Evaluation& temperature,
+                                              const Evaluation& pressure,
+                                              const Evaluation& Rs) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation xlCO2 = convertRsToXoG_(Rs,regionIdx);
@@ -241,9 +247,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation viscosity(unsigned regionIdx,
-                         const Evaluation& temperature,
-                         const Evaluation& pressure,
-                         const Evaluation& /*Rs*/) const
+                                         const Evaluation& temperature,
+                                         const Evaluation& pressure,
+                                         const Evaluation& /*Rs*/) const
     {
         //TODO: The viscosity does not yet depend on the composition
         return saturatedViscosity(regionIdx, temperature, pressure);
@@ -254,9 +260,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedViscosity(unsigned regionIdx,
-                                 const Evaluation& temperature,
-                                 const Evaluation& pressure,
-                                 const Evaluation& saltConcentration) const
+                                                  const Evaluation& temperature,
+                                                  const Evaluation& pressure,
+                                                  const Evaluation& saltConcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation salinity = salinityFromConcentration(regionIdx, temperature, pressure, saltConcentration);
@@ -275,10 +281,10 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation viscosity(unsigned regionIdx,
-                         const Evaluation& temperature,
-                         const Evaluation& pressure,
-                         const Evaluation& /*Rsw*/,
-                         const Evaluation& saltConcentration) const
+                                         const Evaluation& temperature,
+                                         const Evaluation& pressure,
+                                         const Evaluation& /*Rsw*/,
+                                         const Evaluation& saltConcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         //TODO: The viscosity does not yet depend on the composition
@@ -290,8 +296,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedViscosity(unsigned regionIdx,
-                                  const Evaluation& temperature,
-                                  const Evaluation& pressure) const
+                                                  const Evaluation& temperature,
+                                                  const Evaluation& pressure) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         if (enableEzrokhiViscosity_) {
@@ -311,9 +317,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedInverseFormationVolumeFactor(unsigned regionIdx,
-                                                     const Evaluation& temperature,
-                                                     const Evaluation& pressure,
-                                                     const Evaluation& saltconcentration) const
+                                                                     const Evaluation& temperature,
+                                                                     const Evaluation& pressure,
+                                                                     const Evaluation& saltconcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation salinity = salinityFromConcentration(regionIdx, temperature,
@@ -328,10 +334,10 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation inverseFormationVolumeFactor(unsigned regionIdx,
-                                            const Evaluation& temperature,
-                                            const Evaluation& pressure,
-                                            const Evaluation& Rs,
-                                            const Evaluation& saltConcentration) const
+                                                            const Evaluation& temperature,
+                                                            const Evaluation& pressure,
+                                                            const Evaluation& Rs,
+                                                            const Evaluation& saltConcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Evaluation salinity = salinityFromConcentration(regionIdx, temperature,
@@ -345,9 +351,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation inverseFormationVolumeFactor(unsigned regionIdx,
-                                            const Evaluation& temperature,
-                                            const Evaluation& pressure,
-                                            const Evaluation& Rs) const
+                                                            const Evaluation& temperature,
+                                                            const Evaluation& pressure,
+                                                            const Evaluation& Rs) const
     {
         return (1.0 - convertRsToXoG_(Rs,regionIdx)) * density(regionIdx, temperature, pressure,
                                                                Rs, Evaluation(salinity_[regionIdx]))
@@ -359,7 +365,7 @@ public:
      */
     template <class FluidState, class LhsEval = typename FluidState::ValueType>
     std::pair<LhsEval, LhsEval>
-    inverseFormationVolumeFactorAndViscosity(const FluidState& fluidState, unsigned regionIdx)
+    OPM_HOST_DEVICE inverseFormationVolumeFactorAndViscosity(const FluidState& fluidState, unsigned regionIdx) const
     {
         // Deal with the possibility that we are in a two-phase CO2STORE with OIL and GAS as phases.
         const bool waterIsActive = fluidState.phaseIsActive(FluidState::waterPhaseIdx);
@@ -380,8 +386,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedInverseFormationVolumeFactor(unsigned regionIdx,
-                                                     const Evaluation& temperature,
-                                                     const Evaluation& pressure) const
+                                                                     const Evaluation& temperature,
+                                                                     const Evaluation& pressure) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         Evaluation rs_sat = rsSat(regionIdx, temperature, pressure, Evaluation(salinity_[regionIdx]));
@@ -398,8 +404,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturationPressure(unsigned /*regionIdx*/,
-                                  const Evaluation& /*temperature*/,
-                                  const Evaluation& /*Rs*/) const
+                                                  const Evaluation& /*temperature*/,
+                                                  const Evaluation& /*Rs*/) const
     {
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
         assert(false && "Requested the saturation pressure for the brine-co2 pvt module. Not yet implemented.");
@@ -417,9 +423,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturationPressure(unsigned /*regionIdx*/,
-                                  const Evaluation& /*temperature*/,
-                                  const Evaluation& /*Rs*/,
-                                  const Evaluation& /*saltConcentration*/) const
+                                                  const Evaluation& /*temperature*/,
+                                                  const Evaluation& /*Rs*/,
+                                                  const Evaluation& /*saltConcentration*/) const
     {
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
         assert(false && "Requested the saturation pressure for the brine-co2 pvt module. Not yet implemented.");
@@ -434,10 +440,10 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedGasDissolutionFactor(unsigned regionIdx,
-                                             const Evaluation& temperature,
-                                             const Evaluation& pressure,
-                                             const Evaluation& /*oilSaturation*/,
-                                             const Evaluation& /*maxOilSaturation*/) const
+                                                             const Evaluation& temperature,
+                                                             const Evaluation& pressure,
+                                                             const Evaluation& /*oilSaturation*/,
+                                                             const Evaluation& /*maxOilSaturation*/) const
     {
         //TODO support VAPPARS
         return rsSat(regionIdx, temperature, pressure, Evaluation(salinity_[regionIdx]));
@@ -448,9 +454,9 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedGasDissolutionFactor(unsigned regionIdx,
-                                             const Evaluation& temperature,
-                                             const Evaluation& pressure,
-                                             const Evaluation& saltConcentration) const
+                                                             const Evaluation& temperature,
+                                                             const Evaluation& pressure,
+                                                             const Evaluation& saltConcentration) const
     {
         const Evaluation salinity = salinityFromConcentration(regionIdx, temperature,
                                                               pressure, saltConcentration);
@@ -462,8 +468,8 @@ public:
      */
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation saturatedGasDissolutionFactor(unsigned regionIdx,
-                                             const Evaluation& temperature,
-                                             const Evaluation& pressure) const
+                                                             const Evaluation& temperature,
+                                                             const Evaluation& pressure) const
     {
         return rsSat(regionIdx, temperature, pressure, Evaluation(salinity_[regionIdx]));
     }
@@ -503,9 +509,9 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation diffusionCoefficient(const Evaluation& temperature,
-                                    const Evaluation& pressure,
-                                    unsigned /*compIdx*/,
-                                    unsigned regionIdx = 0) const
+                                                    const Evaluation& pressure,
+                                                    unsigned /*compIdx*/,
+                                                    unsigned regionIdx = 0) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         // Diffusion coefficient of CO2 in pure water according to
@@ -535,10 +541,10 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation density(unsigned regionIdx,
-                       const Evaluation& temperature,
-                       const Evaluation& pressure,
-                       const Evaluation& Rs,
-                       const Evaluation& salinity) const
+                                       const Evaluation& temperature,
+                                       const Evaluation& pressure,
+                                       const Evaluation& Rs,
+                                       const Evaluation& salinity) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         Evaluation xlCO2 = convertXoGToxoG_(convertRsToXoG_(Rs,regionIdx), salinity);
@@ -553,9 +559,9 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE Evaluation rsSat(unsigned regionIdx,
-                     const Evaluation& temperature,
-                     const Evaluation& pressure,
-                     const Evaluation& salinity) const
+                                     const Evaluation& temperature,
+                                     const Evaluation& pressure,
+                                     const Evaluation& salinity) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         if (!enableDissolution_) {
@@ -585,7 +591,7 @@ public:
 private:
     template <class LhsEval>
     OPM_HOST_DEVICE LhsEval ezrokhiExponent_(const LhsEval& temperature,
-                             const ContainerT& ezrokhiCoeff) const
+                                             const ContainerT& ezrokhiCoeff) const
     {
         const LhsEval& tempC = temperature - 273.15;
         return ezrokhiCoeff[0] + tempC * (ezrokhiCoeff[1] + ezrokhiCoeff[2] * tempC);
@@ -593,9 +599,9 @@ private:
 
     template <class LhsEval>
     OPM_HOST_DEVICE LhsEval liquidDensity_(const LhsEval& T,
-                           const LhsEval& pl,
-                           const LhsEval& xlCO2,
-                           const LhsEval& salinity) const
+                                           const LhsEval& pl,
+                                           const LhsEval& xlCO2,
+                                           const LhsEval& salinity) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         Valgrind::CheckDefined(T);
@@ -718,9 +724,9 @@ private:
 
     template <class LhsEval>
     OPM_HOST_DEVICE LhsEval liquidEnthalpyBrineCO2_(const LhsEval& T,
-                                    const LhsEval& p,
-                                    const LhsEval& salinity,
-                                    const LhsEval& X_CO2_w) const
+                                                    const LhsEval& p,
+                                                    const LhsEval& salinity,
+                                                    const LhsEval& X_CO2_w) const
     {
         if (liquidMixType_ == Co2StoreConfig::LiquidMixingType::NONE
             && saltMixType_ == Co2StoreConfig::SaltMixingType::NONE)
@@ -807,9 +813,9 @@ private:
 
     template <class LhsEval>
     OPM_HOST_DEVICE const LhsEval salinityFromConcentration(unsigned regionIdx,
-                                            const LhsEval&T,
-                                            const LhsEval& P,
-                                            const LhsEval& saltConcentration) const
+                                                            const LhsEval&T,
+                                                            const LhsEval& P,
+                                                            const LhsEval& saltConcentration) const
     {
         if (enableSaltConcentration_) {
             // Convert concentration [kg/m³] to mass fraction [kg_salt/kg_solution].
