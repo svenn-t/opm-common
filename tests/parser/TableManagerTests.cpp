@@ -568,6 +568,95 @@ BOOST_AUTO_TEST_CASE(PlyadsTable_Tests) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(PlyshlogTable_SizeRequirements) {
+    const auto parseDeck = [](const char* data)
+    {
+        return Opm::Parser{}.parseString(data);
+    };
+
+    const auto checkThrowsInputError = [&parseDeck](const char* data)
+    {
+        const auto deck = parseDeck(data);
+        BOOST_CHECK_THROW(Opm::TableManager{deck}, Opm::OpmInputError);
+    };
+
+    {
+        const auto deck = parseDeck(R"(
+TABDIMS
+-- NTSFUN NTPVT NSSFUN NPPVT
+   1      1     100    3 /
+PLYSHLOG
+1.0 3.0 /
+0.0000001 1.0
+1.0       1.2 /
+)" );
+
+        const auto tableManager = Opm::TableManager{deck};
+        const auto& tables = tableManager.getPlyshlogTables();
+        const auto& table = tables.getTable<Opm::PlyshlogTable>(0);
+        BOOST_CHECK_EQUAL(table.numRows(), 2U);
+    }
+
+    {
+        const auto deck = parseDeck(R"(
+TABDIMS
+-- NTSFUN NTPVT NSSFUN NPPVT
+   1      1     100    3 /
+PLYSHLOG
+1.0 3.0 /
+0.0000001 1.0
+1.0       1.2
+1000.0    2.4 /
+)" );
+
+        const auto tableManager = Opm::TableManager{deck};
+        const auto& tables = tableManager.getPlyshlogTables();
+        const auto& table = tables.getTable<Opm::PlyshlogTable>(0);
+        BOOST_CHECK_EQUAL(table.numRows(), 3U);
+    }
+
+    checkThrowsInputError(R"(
+TABDIMS
+-- NTSFUN NTPVT NSSFUN NPPVT
+   1      1     100    3 /
+PLYSHLOG
+1.0 3.0 /
+0.0000001 1.0 /
+)" );
+
+    checkThrowsInputError(R"(
+TABDIMS
+-- NTSFUN NTPVT NSSFUN NPPVT
+   1      1     100    3 /
+PLYSHLOG
+1.0 3.0 /
+0.0000001 1.0
+1.0       1.2
+1000.0    2.4
+2000.0    2.5 /
+)" );
+
+    checkThrowsInputError(R"(
+TABDIMS
+-- NTSFUN NTPVT NSSFUN NPPVT
+   1      1     100    3 /
+PLYSHLOG
+1.0 3.0 /
+0.0000001 1.0
+1.0 /
+)" );
+
+    checkThrowsInputError(R"(
+TABDIMS
+-- NTSFUN NTPVT NSSFUN NPPVT
+   1      1     100    3 /
+PLYSHLOG
+1.0 3.0 /
+0.0000001 1.0
+1.0       * /
+)" );
+}
+
 BOOST_AUTO_TEST_CASE(FoamadsTable_Tests) {
     {
         const char *correctDeckData =

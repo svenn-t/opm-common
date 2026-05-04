@@ -1,7 +1,6 @@
--- THE TABDIMS IS NOT SUPPORTED FOR PLYSHLOG YET.
--- TABDIMS
+TABDIMS
 -- NTSFUN  NTPVT   NSSFUN   NPPVT   NTFIP   NRPVT
---    1       1        100     50       1           /
+     1       1        100     50       1           /
 
 PLYSHLOG
     1.0        3.0

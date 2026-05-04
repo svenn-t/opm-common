@@ -700,7 +700,7 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
             return;
         }
 
-        if (!deck.count(keywordName)) {
+        if (deck.count(keywordName) > 1) {
             complainAboutAmbiguousKeyword(deck, keywordName);
             return;
         }
@@ -708,22 +708,58 @@ std::optional<JFunc> make_jfunc(const Deck& deck) {
         auto& container = forceGetTables(keywordName, numTables);
         const auto& tableKeyword = deck[keywordName].back();
 
-        if (tableKeyword.size() > 2) {
-            const std::string reason {
-                "The Parser does currently NOT support the alternating record schema used in PLYSHLOG"
-            } ;
-
+        // PLYSHLOG has an alternating record layout: every PVT region
+        // contributes two records, an "index" record holding the
+        // reference conditions and a "data" record holding the velocity /
+        // shear-multiplier table. The total number of records must
+        // therefore be exactly 2 * NTPVT.
+        const std::size_t numRecords = tableKeyword.size();
+        const std::size_t expectedRecords = 2 * numTables;
+        if (numRecords != expectedRecords) {
+            const std::string reason = fmt::format(
+                "PLYSHLOG must contain exactly {0} table(s) (2 records each, "
+                "i.e. {1} records in total) to match NTPVT = {0} from TABDIMS, "
+                "but {2} record(s) were supplied.",
+                numTables, expectedRecords, numRecords);
             throw OpmInputError(reason, tableKeyword.location());
         }
+        const std::size_t numRegions = numTables;
+        const std::size_t maxRows = m_tabdims.getNumPressureNodes();
+        constexpr std::size_t numColumns = 2;
+        for (std::size_t regionIdx = 0; regionIdx < numRegions; ++regionIdx) {
+            const auto& indexRecord = tableKeyword.getRecord(2 * regionIdx);
+            const auto& dataRecord = tableKeyword.getRecord(2 * regionIdx + 1);
+            const auto& dataItem = dataRecord.getItem(0);
 
-        for (std::size_t tableIdx = 0; tableIdx < tableKeyword.size(); tableIdx += 2) {
-            const auto& indexRecord = tableKeyword.getRecord( tableIdx );
-            const auto& dataRecord = tableKeyword.getRecord( tableIdx + 1);
-            const auto& dataItem = dataRecord.getItem( 0 );
-            if (dataItem.data_size() > 0) {
-                std::shared_ptr<PlyshlogTable> table = std::make_shared<PlyshlogTable>(indexRecord , dataRecord);
-                container.addTable( tableIdx , table );
+            if ((dataItem.data_size() % numColumns) != 0) {
+                const std::string reason = fmt::format(
+                    "PLYSHLOG table {} must contain complete two-column rows, "
+                    "but {} value(s) were supplied.",
+                    regionIdx + 1, dataItem.data_size());
+                throw OpmInputError(reason, tableKeyword.location());
             }
+
+            const std::size_t numRows = dataItem.data_size() / numColumns;
+            if ((numRows < 2) || (numRows > maxRows)) {
+                const std::string reason = fmt::format(
+                    "PLYSHLOG table {} must contain at least 2 and no more "
+                    "than NPPVT={} row(s), but {} row(s) were supplied.",
+                    regionIdx + 1, maxRows, numRows);
+                throw OpmInputError(reason, tableKeyword.location());
+            }
+
+            for (std::size_t itemIdx = 0; itemIdx < dataItem.data_size(); ++itemIdx) {
+                if (dataItem.defaultApplied(itemIdx)) {
+                    const std::string reason = fmt::format(
+                        "PLYSHLOG table {} must contain complete rows; "
+                        "defaulted values are not allowed in the data table.",
+                        regionIdx + 1);
+                    throw OpmInputError(reason, tableKeyword.location());
+                }
+            }
+
+            std::shared_ptr<PlyshlogTable> table = std::make_shared<PlyshlogTable>(indexRecord, dataRecord);
+            container.addTable(regionIdx, table);
         }
     }
 
