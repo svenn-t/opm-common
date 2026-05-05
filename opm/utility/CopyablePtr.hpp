@@ -34,10 +34,6 @@ namespace Utility {
 //   destroys on destruction) — same semantics as the original unique_ptr wrapper.
 // On the device (CUDA/HIP kernel): behaves as a non-owning view; copy/assign
 //   simply copy the raw pointer and the destructor is a no-op.
-//
-// WARNING: This template should not be used with polymorphic classes.
-//   That would require a virtual clone() method. It will only ever copy
-//   the static class type of the pointed-to object.
 template <class T, bool on_gpu = OPM_IS_INSIDE_DEVICE_FUNCTION>
 class CopyablePtr {
 public:
@@ -45,6 +41,12 @@ public:
     friend class CopyablePtr;
 
     using ptr_type = std::conditional_t<on_gpu, T*, std::unique_ptr<T>>;
+
+    // WARNING: This template should not be used with polymorphic classes.
+    //   That would require a virtual clone() method. It will only ever copy
+    //   the static class type of the pointed-to object.
+    static_assert(!std::is_polymorphic_v<T>,
+                  "CopyablePtr does not support polymorphic types");
 
     OPM_HOST_DEVICE CopyablePtr() : ptr_(nullptr) {}
 
@@ -135,7 +137,7 @@ public:
     OPM_HOST_DEVICE T* get() const { return deref_ptr(); }
 
     // release ownership
-    T* release() {
+    OPM_HOST_DEVICE T* release() {
         if constexpr (on_gpu) {
             T* tmp = ptr_;
             ptr_ = nullptr;
