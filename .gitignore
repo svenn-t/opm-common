@@ -3,14 +3,25 @@
 .\#*
 \#*\#
 .\#*\#
+*.swp
 
 # compiler output
 *.o
 *.mod
+.libs
+.deps
+stamp-*
+*.aux
+*.log
 
-# libtool compatible files
-*.lo
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
 *.la
+*.a
 
 # Eclipse project settings
 .cproject
@@ -24,49 +35,12 @@
 # QtCreator project settings
 CMakeLists.txt.user*
 
-# in-tree build with CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-config.h
-opm-core-config.cmake
-opm-core-config-version.cmake
-opm-core-install.cmake
-Makefile
-bin/
-lib/
-Doxyfile
-Documentation/html
-dune.module
-*.pc
-install_manifest.txt
-
-# testing framework
-CTestTestfile.cmake
-DartConfiguration.tcl
-Testing/
-
 # Build directory in source.
-build/
-
-gmon.out
-log.log
 build
+
+log.log
 install
-.cproject
-.project
-/testdata/statoil
 .idea
-/Debug/
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
 
 # Mac OS X debug info
 *.dSYM
@@ -74,6 +48,17 @@ install
 
 # emacs directory setting:
 .dir-locals.el
+
+# Python sphinx build
+python/sphinx_docs/docs/_build/
+
+# Python cache directories
+**/__pycache__/
+
+# Python docker files
+python/docker/wheelhouse*
+python/docker/build*.log
+python/docker/extracted_wheels/
 
 *.pyc
 *.eggs
