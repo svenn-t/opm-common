@@ -34,6 +34,7 @@
 #include "EclTwoPhaseMaterial.hpp"
 
 #include <opm/common/TimingMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 #include <opm/common/utility/gpuDecorators.hpp>
 
@@ -44,7 +45,9 @@ namespace Opm {
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
 #define OPM_ECL_MULTIPLEXER_MATERIAL_CALL(codeToCall, onePhaseCode)                                                    \
     {                                                                                                                  \
-        [[maybe_unused]] constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Default;                  \
+        constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Default;                                   \
+        OPM_ERROR_IF(params.approach() != approach,                                                                    \
+                     "EclMultiplexerMaterial: Only default multiphase-approach is supported in a device function.");   \
         auto& realParams = params.template getRealParams<approach>();                                                  \
         using ActualLaw = DefaultMaterial;                                                                             \
         codeToCall;                                                                                                    \
@@ -98,13 +101,15 @@ namespace Opm {
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
 #define OPM_ECL_MULTIPLEXER_MATERIAL_CALL_COMPILETIME(codeToCall, onePhaseCode)                                        \
     if constexpr (Head::approach == EclMultiplexerApproach::Default) {                                                 \
-        [[maybe_unused]] constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Default;                  \
+        constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Default;                                   \
+        OPM_ERROR_IF(params.approach() != approach,                                                                    \
+                     "EclMultiplexerMaterial: Only default multiphase-approach is supported in a device function.");   \
         auto& realParams = params.template getRealParams<approach>();                                                  \
         using ActualLaw = DefaultMaterial;                                                                             \
         codeToCall;                                                                                                    \
     }
 
-#else 
+#else
 #define OPM_ECL_MULTIPLEXER_MATERIAL_CALL_COMPILETIME(codeToCall, onePhaseCode)                                        \
     if constexpr (Head::approach == EclMultiplexerApproach::Stone1) {                                                  \
         [[maybe_unused]] constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Stone1;                   \
@@ -229,8 +234,8 @@ public:
      */
     template <class ContainerT, class FluidState, class ...Args>
     OPM_HOST_DEVICE static void capillaryPressures(ContainerT& values,
-                                   const Params& params,
-                                   const FluidState& fluidState)
+                                                   const Params& params,
+                                                   const FluidState& fluidState)
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::SatProps);
         if constexpr (FrontIsEclMultiplexerDispatchV<Args...>) {
@@ -444,8 +449,8 @@ public:
      */
     template <class ContainerT, class FluidState, class ...Args>
     OPM_HOST_DEVICE static void relativePermeabilities(ContainerT& values,
-                                       const Params& params,
-                                       const FluidState& fluidState)
+                                                       const Params& params,
+                                                       const FluidState& fluidState)
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::SatProps);
         if constexpr (FrontIsEclMultiplexerDispatchV<Args...>) {

@@ -29,6 +29,7 @@
 
 #include "SatCurveMultiplexerParams.hpp"
 
+#include <opm/common/ErrorMacros.hpp>
 #include <opm/common/utility/gpuDecorators.hpp>
 
 #include <stdexcept>
@@ -194,6 +195,8 @@ public:
         }
 
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
+        OPM_ERROR_IF(params.approach() != SatCurveMultiplexerApproach::PiecewiseLinear,
+                     "SatCurveMultiplexer::twoPhaseSatPcnw: Only piecewise linear approach is supported in a device function.");
         return PLTwoPhaseLaw::twoPhaseSatPcnw(params.template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>(),
                                               Sw);
 #else
@@ -332,6 +335,8 @@ public:
         }
 
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
+        OPM_ERROR_IF(params.approach() != SatCurveMultiplexerApproach::PiecewiseLinear,
+                     "SatCurveMultiplexer::twoPhaseSatKrw: Only piecewise linear approach is supported in a device function.");
         return PLTwoPhaseLaw::twoPhaseSatKrw(params.template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>(),
                                              Sw);
 #else
@@ -413,6 +418,8 @@ public:
         }
 
 #if OPM_IS_INSIDE_DEVICE_FUNCTION
+        OPM_ERROR_IF(params.approach() != SatCurveMultiplexerApproach::PiecewiseLinear,
+                     "SatCurveMultiplexer::twoPhaseSatKrn: Only piecewise linear approach is supported in a device function.");
         return PLTwoPhaseLaw::twoPhaseSatKrn(params.template getRealParams<SatCurveMultiplexerApproach::PiecewiseLinear>(),
                                              Sw);
 #else
