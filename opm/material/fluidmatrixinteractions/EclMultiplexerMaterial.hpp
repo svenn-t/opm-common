@@ -46,8 +46,6 @@ namespace Opm {
 #define OPM_ECL_MULTIPLEXER_MATERIAL_CALL(codeToCall, onePhaseCode)                                                    \
     {                                                                                                                  \
         constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Default;                                   \
-        OPM_ERROR_IF(params.approach() != approach,                                                                    \
-                     "EclMultiplexerMaterial: Only default multiphase-approach is supported in a device function.");   \
         auto& realParams = params.template getRealParams<approach>();                                                  \
         using ActualLaw = DefaultMaterial;                                                                             \
         codeToCall;                                                                                                    \
@@ -102,8 +100,6 @@ namespace Opm {
 #define OPM_ECL_MULTIPLEXER_MATERIAL_CALL_COMPILETIME(codeToCall, onePhaseCode)                                        \
     if constexpr (Head::approach == EclMultiplexerApproach::Default) {                                                 \
         constexpr EclMultiplexerApproach approach = EclMultiplexerApproach::Default;                                   \
-        OPM_ERROR_IF(params.approach() != approach,                                                                    \
-                     "EclMultiplexerMaterial: Only default multiphase-approach is supported in a device function.");   \
         auto& realParams = params.template getRealParams<approach>();                                                  \
         using ActualLaw = DefaultMaterial;                                                                             \
         codeToCall;                                                                                                    \
