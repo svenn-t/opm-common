@@ -156,7 +156,7 @@ public:
     invAvgMolarMassFromMassFrac(const SaltArray<Evaluation>& salinity)
     {
         const Scalar mCO2 = molarMass();
-        Evaluation s = 1 / mCO2;
+        Evaluation s = 1.0 / mCO2;
         for (std::size_t i = 0; i < salinity.size(); ++i) {
             auto sIdx = static_cast<SaltIndex>(i);
             auto mIon = saltMolarMass<Scalar>(sIdx);
