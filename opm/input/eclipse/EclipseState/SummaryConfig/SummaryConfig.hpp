@@ -141,6 +141,16 @@ namespace Opm {
         /// Retrieve summary vector's associated region.
         const std::string& fip_region() const { return *this->fip_region_ ; }
 
+        /// Retrieve LGR name for this summary vector.
+        const std::optional<std::string>& lgr_name() const
+        { return this->lgr_name_; }
+
+        /// Assign LGR name for this summary vector.
+        ///
+        /// \return \code *this \endcode
+        SummaryConfigNode& lgr_name(const std::string& name)
+        { this->lgr_name_ = name; return *this; }
+
         /// Retrieve a unique distinguishing identifier for this summary vector.
         std::string uniqueNodeKey() const;
 
@@ -152,6 +162,10 @@ namespace Opm {
         /// Convert summary vector definition to low-level SummaryNode object.
         operator EclIO::SummaryNode() const
         {
+            auto lgr = this->lgr_name_.has_value()
+                ? std::optional<EclIO::lgr_info>{ EclIO::lgr_info{ *this->lgr_name_, {} } }
+                : std::optional<EclIO::lgr_info>{};
+
             return {
                 /* keyword = */    this->keyword_,
                 /* category = */   this->category_,
@@ -159,7 +173,7 @@ namespace Opm {
                 /* wgname = */     this->name_,
                 /* number = */     this->number_,
                 /* fip_region = */ this->fip_region_,
-                /* lgr = */        {} // std::optional<>
+                /* lgr = */        std::move(lgr)
             };
         }
 
@@ -179,6 +193,7 @@ namespace Opm {
             serializer(number_);
             serializer(fip_region_);
             serializer(userDefined_);
+            serializer(lgr_name_);
         }
 
     private:
@@ -210,6 +225,11 @@ namespace Opm {
         ///
         /// Mostly for diagnostic purposes.
         KeywordLocation loc{};
+
+        /// LGR name for LGR-level summary vectors (LW*, LC*, LB*).
+        /// Empty optional for all non-LGR vectors.
+        std::optional<std::string> lgr_name_{};
+
     };
 
     /// Infer summary vector level from keyword name.
