@@ -287,7 +287,7 @@ public:
             const Evaluation& nacl_exponent = ezrokhiExponent_(temperature, ezrokhiViscNaClCoeff_);
             return mu_pure * pow(10.0, nacl_exponent * salinityArray[SaltIndex::NA]);
         }
-        return Brine::liquidViscosity(temperature, pressure, salinityArray[SaltIndex::NA]);
+        return Brine::liquidViscosityLaliberte(temperature, pressure, salinityArray);
     }
 
     /*!
@@ -320,9 +320,9 @@ public:
             return mu_pure * pow(10.0,
                                  nacl_exponent * Evaluation(salinity_[regionIdx][SaltIndex::NA]));
         }
-        return Brine::liquidViscosity(temperature,
-                                      pressure,
-                                      Evaluation(salinity_[regionIdx][SaltIndex::NA]));
+        SaltArray<Evaluation> evalSalinity;
+        evalSalinity = salinity(regionIdx);
+        return Brine::liquidViscosityLaliberte(temperature, pressure, evalSalinity);
     }
 
 
@@ -577,14 +577,15 @@ public:
         // Water viscosity
         const Evaluation& mu_H20 = H2O::liquidViscosity(temperature, pressure, extrapolate);
         Evaluation mu_Brine;
-        const auto evalSalinity = Evaluation(salinity_[regionIdx][SaltIndex::NA]);
+        SaltArray<Evaluation> evalSalinity;
+        evalSalinity = salinity_[regionIdx];
         if (enableEzrokhiViscosity_) {
             const Evaluation& nacl_exponent = ezrokhiExponent_(temperature,
                                                                ezrokhiViscNaClCoeff_);
-            mu_Brine = mu_H20 * pow(10.0, nacl_exponent * evalSalinity);
+            mu_Brine = mu_H20 * pow(10.0, nacl_exponent * evalSalinity[SaltIndex::NA]);
         } else {
             // Brine viscosity
-            mu_Brine = Brine::liquidViscosity(temperature, pressure, evalSalinity);
+            mu_Brine = Brine::liquidViscosityLaliberte(temperature, pressure, evalSalinity);
         }
         const Evaluation log_D_Brine = log_D_H20 - 0.87*log10(mu_Brine / mu_H20);
 
