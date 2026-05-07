@@ -282,6 +282,12 @@ public:
         return molalityArray;
     }
 
+    template<class Serializer>
+    void serializeOp(Serializer& serializer)
+    {
+        serializer(saltData_);
+    }
+
 private:
     std::array<T, ncomp> saltData_{};
 };

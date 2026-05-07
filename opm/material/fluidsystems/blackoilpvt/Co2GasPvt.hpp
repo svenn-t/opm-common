@@ -327,7 +327,7 @@ public:
                                                                 const Evaluation& saltConcentration) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
-        const auto& salinity =
+        const auto salinity =
             salinityFromConcentration(temperature,
                                       pressure,
                                       saltConcentration);
@@ -504,15 +504,16 @@ private:
 #endif // HAVE_CUDA
 
     template <class LhsEval>
-    OPM_HOST_DEVICE const SaltArray<LhsEval>&
+    OPM_HOST_DEVICE SaltArray<LhsEval>
     salinityFromConcentration(const LhsEval& T,
                               const LhsEval& P,
                               const LhsEval& saltConcentration) const
     {
         const LhsEval salt = saltConcentration / H2O::liquidDensity(T, P, true);
-        salinity_[0][SaltIndex::NA] = salt;
-        salinity_[0][SaltIndex::CL] = salt;
-        return salinity_[0];
+        SaltArray<LhsEval> S;
+        S[SaltIndex::NA] = salt;
+        S[SaltIndex::CL] = salt;
+        return S;
     }
 
     ContainerT brineReferenceDensity_{};
