@@ -214,6 +214,11 @@ public:
         return std::accumulate(begin(), end(), T{});
     }
 
+    void clear() noexcept
+    {
+        saltData_.fill(T{});
+    }
+
     [[nodiscard]] bool any_nonzero() const noexcept
     {
         return std::any_of(begin(),

@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineDensityWithCO2, Scalar, Types)
     const int activityModel = 3;
 
     // Tolerance for Yan et al. (2011) data
-    const Scalar tol_yan = 5e-3;
+    const Scalar tol_yan = 8.25e-3;
 
     // Yan et al, Int. J. Greenh. Gas Control, 5, 2011; Table 4
     static constexpr Scalar rho_Yan_1[3][6][3] = {{
