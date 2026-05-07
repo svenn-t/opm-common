@@ -95,7 +95,7 @@ public:
     invAvgMolarMassFromMassFrac(const SaltArray<Evaluation>& salinity)
     {
         const Scalar mH2O = H2O::molarMass();
-        Evaluation s = 1 / mH2O;
+        Evaluation s = 1.0 / mH2O;
         for (std::size_t i = 0; i < salinity.size(); ++i) {
             auto sIdx = static_cast<SaltIndex>(i);
             auto mIon = saltMolarMass<Scalar>(sIdx);
@@ -363,6 +363,11 @@ public:
                                                       bool extrapolate = false)
     {
         const Evaluation rhow = H2O::liquidDensity(temperature, pressure, extrapolate);
+
+        // Return pure water density if salinity is zero
+        if (!salinity.any_nonzero()) {
+            return rhow;
+        }
         return liquidDensityLaliberteCooper(temperature, pressure, salinity, rhow);
     }
 
@@ -374,38 +379,7 @@ public:
                                  const Evaluation& rhow)
     {
         // Generate (valid) electrolytes from salt components
-        auto molalSalinity = salinity.to_molality();
-        auto [cations, anions] = salinity.cation_anion_pair();
-        std::vector<std::pair<SaltElectrolytes, Evaluation> > electrolytes;
-        for (const auto& anionIdx : anions) {
-            auto& molalAnion = molalSalinity[anionIdx];
-            for (std::size_t i = 0; i < cations.size() && molalAnion > 1e-6; ++i) {
-                const auto& cationIdx = cations[i];
-                auto& molalCation = molalSalinity[cations[i]];
-                if (molalCation < 1e-6) {
-                    continue;
-                }
-
-                // Get electrolyte with molalality, and subtract used cation and anion molalities
-                electrolytes.push_back(
-                    electrolytesAndRemainingMolal_(cationIdx,
-                                                   molalCation,
-                                                   anionIdx,
-                                                   molalAnion));
-            }
-        }
-
-        // Warn if there are any rest molality left after generating electrolytes
-        if (molalSalinity.sum() > 1e-6) {
-            OpmLog::debug(
-                fmt::format("Sum molality of salt components ({}) > tolerance. "
-                            "Rest salt ignored in density calculations!",
-                            decay<Scalar>(molalSalinity.sum()))
-                );
-        }
-
-        // Convert salt electrolytes from molality to mass fraction
-        electrolytesMolalToMassFrac_(electrolytes);
+        auto electrolytes = electrolytesFromSaltComponents_(salinity);
 
         // Calculate brine density with Eq. (6)
         Evaluation tempC = temperature - 273.15;
@@ -426,8 +400,8 @@ public:
         // Calculate the rest of Eq. (6) to get brine density
         // OBS: Assume sum of ions mass fractions = sum of electrolyte mass fractions, which is
         // true if there are no residual molalities when calculating electrolytes
-        auto wH2O = 1 - sumSalinity;
-        Evaluation rho = 1 / (wH2O / rhow + sumAppVolTimesMf);
+        auto wH2O = 1.0 - sumSalinity;
+        Evaluation rho = 1.0 / (wH2O / rhow + sumAppVolTimesMf);
 
         return rho;
     }
@@ -504,6 +478,47 @@ public:
         return mu_brine/1000.0; // convert to [Pa s] (todo: check if correct cP->Pa s is times 10...)
     }
 
+    template <class Evaluation>
+    OPM_HOST_DEVICE static Evaluation
+    liquidViscosityLaliberte(const Evaluation& temperature,
+                             const Evaluation& pressure,
+                             const SaltArray<Evaluation>& salinity)
+    {
+        // Pure water viscosity (converted to mPa*s)
+        const Evaluation muW = H2O::liquidViscosity(temperature, pressure, true) * 1e3;
+
+        // Return pure water viscosity for zero salinity
+        if (!salinity.any_nonzero()) {
+            return muW * 1e-3;
+        }
+
+        // Generate (valid) electrolytes from salt components
+        auto electrolytes = electrolytesFromSaltComponents_(salinity);
+
+        // ln-viscosity of mix from Eq. (8)
+        Evaluation tempC = temperature - 273.15;
+        auto sumSalinity = salinity.sum();
+        Evaluation lnMuMix = 0.0;
+        for (const auto& salt : electrolytes) {
+            // Get constants
+            const auto v = LaliberteCoeff_(salt.first);
+
+            // Calculate ln of Eq. (12).
+            // OBS: Eq. (13) seems to be incorrect even in the corrections paper!
+            lnMuMix += salt.second
+                * ((v[0] * pow(sumSalinity, v[1]) + v[2]) / (v[3] * tempC + 1.0)
+                - log(v[4] * pow(sumSalinity, v[5]) + 1.0));
+        }
+
+        // Calculate the rest of Eq. (8)
+        // OBS: Assume sum of ions mass fractions = sum of electrolyte mass fractions, which is
+        // true if there are no residual molalities when calculating electrolytes
+        lnMuMix += (1.0 - sumSalinity) * log(muW);
+
+        // OBS: mPa*s to Pa*s
+        return exp(lnMuMix) * 1e-3;
+    }
+
 private:
     //Molar mass salt (assumes pure NaCl) [kg/mol]
     static constexpr Scalar mM_salt()
@@ -515,6 +530,28 @@ private:
     {
         CaCl2, KCl, K2SO4, MgCl2, MgSO4, NaCl, Na2SO4
     };
+
+    static constexpr std::string_view electrolytesToString(const SaltElectrolytes s)
+    {
+        switch (s) {
+        case SaltElectrolytes::CaCl2:
+            return "CaCl2";
+        case SaltElectrolytes::KCl:
+            return "KCl";
+        case SaltElectrolytes::K2SO4:
+            return "K2SO4";
+        case SaltElectrolytes::MgCl2:
+            return "MgCl2";
+        case SaltElectrolytes::MgSO4:
+            return "MgSO4";
+        case SaltElectrolytes::NaCl:
+            return "NaCl";
+        case SaltElectrolytes::Na2SO4:
+            return "Na2SO4";
+        default:
+            throw std::runtime_error("Unknown SaltElectrolytes");
+        }
+    }
 
     static Scalar electrolyteMolarMass(const SaltElectrolytes e)
     {
@@ -545,10 +582,9 @@ private:
                                    const SaltIndex anionIdx,
                                    Evaluation& anion)
     {
-        std::pair<SaltElectrolytes, Evaluation> electrolyte;
-
         // NOTE: All comments describe unit molal conversion between electrolyte and ions
         Evaluation electrolyteMolal;
+        std::pair<SaltElectrolytes, Evaluation> electrolyte;
         if (cationIdx == SaltIndex::MG && anionIdx == SaltIndex::SO4) {
             // 1m Mg+ + 1m SO4-- = 1m MgSO4
             electrolyteMolal = min(cation, anion);
@@ -613,41 +649,119 @@ private:
         }
     }
 
+    template <class Evaluation>
+    static std::vector<std::pair<SaltElectrolytes, Evaluation> >
+    electrolytesFromSaltComponents_(const SaltArray<Evaluation>& salinity)
+    {
+        // Generate (valid) electrolytes from salt components
+        auto molalSalinity = salinity.to_molality();
+        auto [cations, anions] = salinity.cation_anion_pair();
+        std::vector<std::pair<SaltElectrolytes, Evaluation> > electrolytes;
+        for (const auto& anionIdx : anions) {
+            auto& molalAnion = molalSalinity[anionIdx];
+            for (std::size_t i = 0; i < cations.size() && molalAnion > 1e-6; ++i) {
+                const auto& cationIdx = cations[i];
+                auto& molalCation = molalSalinity[cations[i]];
+                if (molalCation < 1e-6) {
+                    continue;
+                }
+
+                // Generate salt electrolyte (in molal), and subtract used cation and anion
+                // molalities
+                electrolytes.push_back(
+                    electrolytesAndRemainingMolal_(cationIdx,
+                                                   molalCation,
+                                                   anionIdx,
+                                                   molalAnion));
+            }
+        }
+
+        // Warn if there is any leftover molality after generating electrolytes
+        if (molalSalinity.sum() > 1e-6) {
+            OpmLog::debug(
+                fmt::format("Sum molality of salt components ({}) > tolerance, "
+                            "and will be ignored in the property calculations!",
+                            decay<Scalar>(molalSalinity.sum()))
+                );
+        }
+
+        // Convert salt electrolytes from molality to mass fraction
+        electrolytesMolalToMassFrac_(electrolytes);
+
+        return electrolytes;
+    }
+
     static std::span<const Scalar, 5>
     LaliberteCooperCoeff_(const SaltElectrolytes electrolyte)
     {
         if (electrolyte == SaltElectrolytes::CaCl2) {
-            return cCaCl2;
+            return cDensCaCl2;
         }
         if (electrolyte == SaltElectrolytes::KCl) {
-            return cKCl;
+            return cDensKCl;
         }
         if (electrolyte == SaltElectrolytes::K2SO4) {
-            return cK2SO4;
+            return cDensK2SO4;
         }
         if (electrolyte == SaltElectrolytes::MgCl2) {
-            return cMgCl2;
+            return cDensMgCl2;
         }
         if (electrolyte == SaltElectrolytes::MgSO4) {
-            return cMgSO4;
+            return cDensMgSO4;
         }
         if (electrolyte == SaltElectrolytes::NaCl) {
-            return cNaCl;
+            return cDensNaCl;
         }
         if (electrolyte == SaltElectrolytes::Na2SO4) {
-            return cNa2SO4;
+            return cDensNa2SO4;
         }
         throw std::runtime_error("Unknown SaltElectrolytes!");
     }
 
-    // Laliberte-Cooper coefficients
-    static constexpr Scalar cCaCl2[5] = {-0.63254, 0.93995, 4.2785, 0.048319, 3180.9};
-    static constexpr Scalar cKCl[5] = {-0.46782, 4.30800, 2.3780, 0.022044, 2714.0};
-    static constexpr Scalar cK2SO4[5] = {-2.6681e-5, 3.0412e-5, 0.97118, 0.019816, 4366.1};
-    static constexpr Scalar cMgCl2[5] = {-0.00051500, 0.0013444, 0.58358, 0.0085832, 3843.6};
-    static constexpr Scalar cMgSO4[5] = {0.0032447, 0.057246, 0.05136, 0.002146, 3287.8};
-    static constexpr Scalar cNaCl[5] = {-0.00433, 0.06471, 1.01660, 0.014624, 3315.6};
-    static constexpr Scalar cNa2SO4[5] = {-1.2095e-7, 4.3474e-7, 0.15364, 0.0072514, 4731.5};
+    static std::span<const Scalar, 6>
+    LaliberteCoeff_(const SaltElectrolytes electrolyte)
+    {
+        if (electrolyte == SaltElectrolytes::CaCl2) {
+            return cViscCaCl2;
+        }
+        if (electrolyte == SaltElectrolytes::KCl) {
+            return cViscKCl;
+        }
+        if (electrolyte == SaltElectrolytes::K2SO4) {
+            return cViscK2SO4;
+        }
+        if (electrolyte == SaltElectrolytes::MgCl2) {
+            return cViscMgCl2;
+        }
+        if (electrolyte == SaltElectrolytes::MgSO4) {
+            return cViscMgSO4;
+        }
+        if (electrolyte == SaltElectrolytes::NaCl) {
+            return cViscNaCl;
+        }
+        if (electrolyte == SaltElectrolytes::Na2SO4) {
+            return cViscNa2SO4;
+        }
+        throw std::runtime_error("Unknown SaltElectrolytes!");
+    }
+
+    // Coefficients for density from Laliberte & Cooper, J. Chem. Eng. Data 49, 2004
+    static constexpr Scalar cDensCaCl2[5] = {-0.63254, 0.93995, 4.2785, 0.048319, 3180.9};
+    static constexpr Scalar cDensKCl[5] = {-0.46782, 4.30800, 2.3780, 0.022044, 2714.0};
+    static constexpr Scalar cDensK2SO4[5] = {-2.6681e-5, 3.0412e-5, 0.97118, 0.019816, 4366.1};
+    static constexpr Scalar cDensMgCl2[5] = {-0.00051500, 0.0013444, 0.58358, 0.0085832, 3843.6};
+    static constexpr Scalar cDensMgSO4[5] = {0.0032447, 0.057246, 0.05136, 0.002146, 3287.8};
+    static constexpr Scalar cDensNaCl[5] = {-0.00433, 0.06471, 1.01660, 0.014624, 3315.6};
+    static constexpr Scalar cDensNa2SO4[5] = {-1.2095e-7, 4.3474e-7, 0.15364, 0.0072514, 4731.5};
+
+    // Coefficients for viscosity from Laliberte, J. Chem. Eng. Data 52, 2007
+    static constexpr Scalar cViscCaCl2[6] = {32.028, 0.78792, -1.1495, 0.0026995, 780860, 5.8442};
+    static constexpr Scalar cViscKCl[6] = {6.4883, 1.3175, -0.77785, 0.092722, -1.3, 2.0811};
+    static constexpr Scalar cViscK2SO4[6] = {-983.76, 983.76, 984.52, 0.0038473, -9.5001, 2.1916};
+    static constexpr Scalar cViscMgCl2[6] = {24.032, 2.2694, 3.7108, 0.021853, -1.1236, 0.14474};
+    static constexpr Scalar cViscMgSO4[6] = {72.269, 2.2238, 6.6037, 0.0079004, 3340.1, 6.1304};
+    static constexpr Scalar cViscNaCl[6] = {16.222, 1.3229, 1.4849, 0.0074691, 30.78, 2.0583};
+    static constexpr Scalar cViscNa2SO4[6] = {26.519, 1.5746, 3.4966, 0.010388, 106.23, 2.9738};
 };
 
 } // namespace Opm
