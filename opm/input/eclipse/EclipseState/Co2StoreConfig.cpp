@@ -141,7 +141,9 @@ namespace Opm {
             saltArray[SaltIndex::CL] = salt;
         } else if (props_section.hasKeyword<ParserKeywords::SALINITC>()) {
             const auto& salinitc = deck["SALINITC"].back().getRecord(0);
-            saltArray.assign(salinitc);
+            SaltArray<double, SaltMolality> salinitcArray;
+            salinitcArray.assignFromDeckRecord(salinitc);
+            saltArray = salinitcArray.convert_to<SaltMassFraction>();
         }
 
         // ACTCO2S
@@ -165,7 +167,7 @@ namespace Opm {
         return salt;
     }
 
-    const SaltArray<double>&
+    const SaltArray<double, SaltMassFraction>&
     Co2StoreConfig::saltComponents() const
     {
         return saltArray;

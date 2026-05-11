@@ -576,7 +576,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithH2OClass, Scalar, Types)
     Evaluation T;
     Evaluation p;
     Evaluation S;
-    Opm::SaltArray<Evaluation> saltArray;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> saltArray;
 
     // Rel. diff. tolerance
     Scalar tol = 1e-2;
@@ -661,7 +661,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineWithSimpleHuDuanH2OClass, Scalar, Types)
     Evaluation T;
     Evaluation p;
     Evaluation S;
-    Opm::SaltArray<Evaluation> saltArray;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> saltArray;
 
     // Rel. diff. tolerance
     Scalar tol = 1e-2;
@@ -738,7 +738,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineSingleSaltsWithH2OClass, Scalar, Types)
     Evaluation T;
     Evaluation P = 100.0e5;  // viscosity and density references are pressure independent
     Evaluation S;
-    Opm::SaltArray<Evaluation> saltArray;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> saltArray;
 
     // Tolerances
     Scalar tol = 2.25e-2;
@@ -854,7 +854,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineMultiComponentSaltsWithH2OClass, Scalar, Type
     Evaluation T;
     Evaluation P = 100.0e5;  // viscosity and density references are pressure independent
     Evaluation S;
-    Opm::SaltArray<Evaluation> saltArray;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> saltArray;
 
     // Tolerances
     Scalar tol = 2.2e-2;
@@ -994,7 +994,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineSingleSaltsWithSimpleHuDuanH2OClass, Scalar, 
     Evaluation T;
     Evaluation P = 100.0e5;  // viscosity and density references are pressure independent
     Evaluation S;
-    Opm::SaltArray<Evaluation> saltArray;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> saltArray;
 
     // Tolerances
     Scalar tol = 2.25e-2;
@@ -1110,7 +1110,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineMultiComponentSaltsWithSimpleHuDuanH2OClass, 
     Evaluation T;
     Evaluation P = 100.0e5;  // viscosity and density references are pressure independent
     Evaluation S;
-    Opm::SaltArray<Evaluation> saltArray;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> saltArray;
 
     // Tolerances
     Scalar tol = 2.2e-2;

@@ -153,7 +153,7 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
-    invAvgMolarMassFromMassFrac(const SaltArray<Evaluation>& salinity)
+    invAvgMolarMassFromMassFrac(const SaltArray<Evaluation, SaltMassFraction>& salinity)
     {
         const Scalar mCO2 = molarMass();
         Evaluation s = 1.0 / mCO2;
@@ -167,7 +167,7 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
-    avgMolarMassFromMoleFrac(const SaltArray<Evaluation>& salinity)
+    avgMolarMassFromMoleFrac(const SaltArray<Evaluation, SaltMoleFraction>& salinity)
     {
         const Scalar mH2O = molarMass();
         Evaluation s = mH2O;

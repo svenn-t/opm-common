@@ -716,13 +716,18 @@ BOOST_AUTO_TEST_CASE(SALINITCtest)
 
     // Check SALINITC. NOTE: converted internally to mass fractions
     const auto& salinitc = config.saltComponents();
-    static constexpr double expected[6] =
-        {0.00207634, 0.00706239, 0.01085904, 0.00878051, 0.01600849, 0.05205446};
+    SaltArray<double, SaltMassFraction> expectedSaltMassFrac;
+    expectedSaltMassFrac[SaltIndex::NA] = 0.00207634;
+    expectedSaltMassFrac[SaltIndex::K] = 0.00706239;
+    expectedSaltMassFrac[SaltIndex::CA] = 0.01085904;
+    expectedSaltMassFrac[SaltIndex::MG] = 0.00878051;
+    expectedSaltMassFrac[SaltIndex::CL] = 0.01600849;
+    expectedSaltMassFrac[SaltIndex::SO4] = 0.05205446;
     constexpr double tol = 1e-3;
-    BOOST_CHECK_CLOSE(salinitc[SaltIndex::NA], expected[0], tol);
-    BOOST_CHECK_CLOSE(salinitc[SaltIndex::K], expected[1], tol);
-    BOOST_CHECK_CLOSE(salinitc[SaltIndex::CA], expected[2], tol);
-    BOOST_CHECK_CLOSE(salinitc[SaltIndex::MG], expected[3], tol);
-    BOOST_CHECK_CLOSE(salinitc[SaltIndex::CL], expected[4], tol);
-    BOOST_CHECK_CLOSE(salinitc[SaltIndex::SO4], expected[5], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::NA], expectedSaltMassFrac[SaltIndex::NA], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::K], expectedSaltMassFrac[SaltIndex::K], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::CA], expectedSaltMassFrac[SaltIndex::CA], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::MG], expectedSaltMassFrac[SaltIndex::MG], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::CL], expectedSaltMassFrac[SaltIndex::CL], tol);
+    BOOST_CHECK_CLOSE(salinitc[SaltIndex::SO4], expectedSaltMassFrac[SaltIndex::SO4], tol);
 }

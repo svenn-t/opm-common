@@ -92,7 +92,7 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
-    invAvgMolarMassFromMassFrac(const SaltArray<Evaluation>& salinity)
+    invAvgMolarMassFromMassFrac(const SaltArray<Evaluation, SaltMassFraction>& salinity)
     {
         const Scalar mH2O = H2O::molarMass();
         Evaluation s = 1.0 / mH2O;
@@ -106,7 +106,7 @@ public:
 
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
-    avgMolarMassFromMoleFrac(const SaltArray<Evaluation>& salinity)
+    avgMolarMassFromMoleFrac(const SaltArray<Evaluation, SaltMoleFraction>& salinity)
     {
         const Scalar mH2O = H2O::molarMass();
         Evaluation s = mH2O;
@@ -357,10 +357,11 @@ public:
     }
 
     template <class Evaluation>
-    OPM_HOST_DEVICE static Evaluation liquidDensityLC(const Evaluation& temperature,
-                                                      const Evaluation& pressure,
-                                                      const SaltArray<Evaluation>& salinity,
-                                                      bool extrapolate = false)
+    OPM_HOST_DEVICE static Evaluation
+    liquidDensityLC(const Evaluation& temperature,
+                    const Evaluation& pressure,
+                    const SaltArray<Evaluation, SaltMassFraction>& salinity,
+                    bool extrapolate = false)
     {
         const Evaluation rhow = H2O::liquidDensity(temperature, pressure, extrapolate);
 
@@ -375,7 +376,7 @@ public:
     OPM_HOST_DEVICE static Evaluation
     liquidDensityLaliberteCooper(const Evaluation& temperature,
                                  [[maybe_unused]] const Evaluation& /*pressure*/,
-                                 const SaltArray<Evaluation>& salinity,
+                                 const SaltArray<Evaluation, SaltMassFraction>& salinity,
                                  const Evaluation& rhow)
     {
         // Generate (valid) electrolytes from salt components
@@ -482,7 +483,7 @@ public:
     OPM_HOST_DEVICE static Evaluation
     liquidViscosityLaliberte(const Evaluation& temperature,
                              const Evaluation& pressure,
-                             const SaltArray<Evaluation>& salinity)
+                             const SaltArray<Evaluation, SaltMassFraction>& salinity)
     {
         // Pure water viscosity (converted to mPa*s)
         const Evaluation muW = H2O::liquidViscosity(temperature, pressure, true) * 1e3;
@@ -651,11 +652,11 @@ private:
 
     template <class Evaluation>
     static std::vector<std::pair<SaltElectrolytes, Evaluation> >
-    electrolytesFromSaltComponents_(const SaltArray<Evaluation>& salinity)
+    electrolytesFromSaltComponents_(const SaltArray<Evaluation, SaltMassFraction>& salinity)
     {
         // Generate (valid) electrolytes from salt components
-        auto molalSalinity = salinity.to_molality();
-        auto [cations, anions] = salinity.cation_anion_pair();
+        auto molalSalinity = salinity.template convert_to<SaltMolality>();
+        auto [cations, anions] = salinity.cations_and_anions();
         std::vector<std::pair<SaltElectrolytes, Evaluation> > electrolytes;
         for (const auto& anionIdx : anions) {
             auto& molalAnion = molalSalinity[anionIdx];

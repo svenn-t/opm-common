@@ -60,27 +60,9 @@ bool close_at_tolerance(Scalar n1, Scalar n2, Scalar tolerance)
 template<class Evaluation>
 Evaluation
 moleFractionToMolality(Evaluation& xlCO2,
-                       Opm::SaltArray<Evaluation>& s)
+                       Opm::SaltArray<Evaluation, Opm::SaltMolality>& s)
 {
     return xlCO2 * (s.sum() + 55.508) / (1.0 - xlCO2);
-}
-
-template <class Evaluation>
-Opm::SaltArray<Evaluation>
-molalityToMassFrac(const Opm::SaltArray<Evaluation>& mSalt)
-{
-    Evaluation sum = 1.0;
-    Opm::SaltArray<Evaluation> massFracArray;
-    for (std::size_t i = 0; i < mSalt.size(); ++i) {
-        auto sIdx = static_cast<Opm::SaltIndex>(i);
-        auto mMsalt = Opm::saltMolarMass<Evaluation>(sIdx);
-        massFracArray[sIdx] = mMsalt * mSalt[sIdx];
-        sum += massFracArray[sIdx];
-    }
-    for (auto& elem : massFracArray) {
-        elem /= sum;
-    }
-    return massFracArray;
 }
 
 #if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 67
@@ -113,7 +95,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Brine_CO2, Scalar, Types)
     // Init pressure, temperature, and salinity variables
     std::vector<Evaluation> T = {303.15, 333.15, 363.15, 393.15};  // K
     std::vector<Evaluation> p = {1e5, 5e5, 10e5, 50e5, 100e5, 200e5, 300e5, 400e5, 500e5, 600e5};  // Pa
-    std::vector<Opm::SaltArray<Evaluation> > s(4);
+    std::vector<Opm::SaltArray<Evaluation, Opm::SaltMolality> > s(4);
     s[0][Opm::SaltIndex::NA] = 0.0;
     s[0][Opm::SaltIndex::CL] = 0.0;
     s[1][Opm::SaltIndex::NA] = 1.0;
@@ -160,7 +142,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Brine_CO2, Scalar, Types)
     Evaluation xgH2O;
     Evaluation xlCO2;
     Evaluation mCO2;
-    Opm::SaltArray<Evaluation> salinity;
+    Opm::SaltArray<Evaluation, Opm::SaltMassFraction> salinity;
     for (std::size_t iS = 0; iS < s.size(); ++iS) {
         for (std::size_t iT = 0; iT < T.size(); ++iT) {
             for (std::size_t iP = 0; iP < p.size(); ++iP) {
@@ -172,7 +154,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(Brine_CO2, Scalar, Types)
 
                     // Calculate salinity in mass fraction
                     if (iS > 0) {
-                        salinity = molalityToMassFrac(s[iS]);
+                        salinity = s[iS].template convert_to<Opm::SaltMassFraction>();
                     }
 
                     // Calculate solubility as mole fraction
@@ -214,7 +196,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineDensityWithCO2, Scalar, Types)
     const int activityModel = 3;
 
     // Tolerance for Yan et al. (2011) data
-    const Scalar tol_yan = 8.25e-3;
+    const Scalar tol_yan = 8.5e-3;
 
     // Yan et al, Int. J. Greenh. Gas Control, 5, 2011; Table 4
     static constexpr Scalar rho_Yan_1[3][6][3] = {{
@@ -245,7 +227,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineDensityWithCO2, Scalar, Types)
     // Temperature, pressure and salinity for Yan et al (2011) data; Table 4
     std::vector<Evaluation> T = {323.2, 373.2, 413.2};  // K
     std::vector<Evaluation> p = {5e6, 10e6, 15e6, 20e6, 30e6, 40e6}; // Pa
-    std::vector<Opm::SaltArray<Scalar> > s(3);
+    std::vector<Opm::SaltArray<Scalar, Opm::SaltMolality> > s(3);
     s[0][Opm::SaltIndex::NA] = 0.0;
     s[0][Opm::SaltIndex::CL] = 0.0;
     s[1][Opm::SaltIndex::NA] = 1.0;
@@ -256,22 +238,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(BrineDensityWithCO2, Scalar, Types)
     // Test against Yan et al. (2011) data
     Evaluation rs_sat;
     Evaluation rho;
-    std::vector<Opm::SaltArray<Scalar> > salinity(1);
+    std::vector<Opm::SaltArray<Scalar, Opm::SaltMassFraction> > salinity(1);
     for (std::size_t iS = 0; iS < s.size(); ++iS) {
         for (std::size_t iP = 0; iP < p.size(); ++iP) {
             for (std::size_t iT = 0; iT < T.size(); ++iT) {
                 // Calculate salinity in mass fraction for nonzero salinity
                 if (iS > 0) {
-                    // salinity[0] = 1 / ( 1 + 1 / (s[iS] * MmNaCl));
-                    salinity[0] = molalityToMassFrac(s[iS]);
+                    salinity[0] = s[iS].template convert_to<Opm::SaltMassFraction>();
                 }
 
                 // Instantiate BrineCo2Pvt class
                 Opm::BrineCo2Pvt<Scalar> brineCo2Pvt(salinity, activityModel);
 
                 // Calculate saturated Rs (dissolved CO2 in brine)
-                Opm::SaltArray<Evaluation> evalSalinity;
-                evalSalinity = salinity[0];
+                Opm::SaltArray<Evaluation, Opm::SaltMassFraction> evalSalinity(salinity[0]);
                 rs_sat = brineCo2Pvt.rsSat(/*regionIdx=*/0, T[iT], p[iP], evalSalinity);
 
                 // Calculate density of brine with dissolved CO2

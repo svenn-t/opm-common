@@ -103,7 +103,7 @@ public:
      * \param params Parameters to use
      * \param temperature the temperature [K]
      * \param pg the gas phase pressure [Pa]
-     * \param salinity the salinity [kg NaCl / kg solution]
+     * \param salinity the salinity of salt ions [kg ion / kg solution]
      * \param knownPhaseIdx indicates which phases are present
      * \param xlCO2 mole fraction of CO2 in brine [mol/mol]
      * \param ygH2O mole fraction of water in the gas phase [mol/mol]
@@ -115,7 +115,7 @@ public:
     calculateMoleFractions(const CO2Params& params,
                            const Evaluation& temperature,
                            const Evaluation& pg,
-                           const SaltArray<Evaluation>& salinity,
+                           const SaltArray<Evaluation, SaltMassFraction>& salinity,
                            const int knownPhaseIdx,
                            Evaluation& xlCO2,
                            Evaluation& ygH2O,
@@ -134,7 +134,7 @@ public:
         // If both phases are present the mole fractions in each phase can be calculate with the mutual solubility
         // function
         if (knownPhaseIdx < 0) {
-            auto molalityNaCl = massFracToMolality_(salinity);
+            const auto molalityNaCl = salinity.template convert_to<SaltMolality>();
             // mass fraction to molality of NaCl
 
             // Duan-Sun model as given in Spycher & Pruess (2005) have a different fugacity coefficient formula and
@@ -183,7 +183,7 @@ public:
         // and the virtual equilibrium mole fraction of water in the non-existing gas phase can be estimated
         // with the mutual solubility function
         else if (knownPhaseIdx == liquidPhaseIdx && activityModel == 3) {
-            auto x_NaCl = massFracToMolFrac_(salinity);
+            auto x_NaCl = salinity.template convert_to<SaltMoleFraction>();
             const Evaluation& A =
                 computeA_(params,
                           temperature,
@@ -201,7 +201,7 @@ public:
         // with the mutual solubility function
         else if (knownPhaseIdx == gasPhaseIdx && activityModel == 3) {
             //y_H2o = fluidstate.
-            auto x_NaCl = massFracToMolFrac_(salinity);
+            auto x_NaCl = salinity.template convert_to<SaltMoleFraction>();
             const Evaluation& A =
                 computeA_(params,
                           temperature,
@@ -557,31 +557,6 @@ private:
     }
 
     /*!
-     * \brief Returns the molality of NaCl (mol NaCl / kg water) for a given mole fraction
-     *
-     * \param salinity the salinity [kg NaCl / kg solution]
-     */
-    template <class Evaluation>
-    OPM_HOST_DEVICE static SaltArray<Evaluation>
-    massFracToMolFrac_(const SaltArray<Evaluation>& Xsalt)
-    {
-        OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
-        const Scalar Mw = H2O::molarMass(); /* molecular weight of water [kg/mol] */
-        Evaluation sum = 1.0;
-        SaltArray<Evaluation> molFracArray;
-        for (std::size_t i = 0; i < Xsalt.size(); ++i) {
-            auto sIdx = static_cast<SaltIndex>(i);
-            auto mMion = saltMolarMass<Scalar>(sIdx);
-            molFracArray[sIdx] = Xsalt[sIdx] / mMion;
-            sum += molFracArray[sIdx] * Mw - Xsalt[sIdx];
-        }
-        for (auto& elem : molFracArray) {
-            elem /= sum;
-        }
-        return molFracArray;
-    }
-
-    /*!
     * \brief Returns the molality of NaCl (mol NaCl / kg water) for a given mole fraction (mol NaCl / mol solution)
     *
     * \param x_NaCl mole fraction of NaCL in brine [mol/mol]
@@ -595,45 +570,6 @@ private:
     }
 #endif
 
-    template <class Evaluation>
-    OPM_HOST_DEVICE static SaltArray<Evaluation>
-    massFracToMolality_(const SaltArray<Evaluation>& Xsalt)
-    {
-        SaltArray<Evaluation> molalityArray;
-        for (std::size_t i = 0; i < Xsalt.size(); ++i) {
-            auto sIdx = static_cast<SaltIndex>(i);
-            molalityArray[sIdx] = Xsalt[sIdx] / saltMolarMass<Scalar>(sIdx);
-        }
-
-        Evaluation sum = 1.0 - Xsalt.sum();
-        for (auto& elem : molalityArray) {
-            elem /= sum;
-        }
-        return molalityArray;
-    }
-
-    /*!
-    * \brief Returns the mole fraction NaCl; inverse of moleFracToMolality
-    *
-    * \param x_NaCl mole fraction of NaCL in brine [mol/mol]
-    */
-    template <class Evaluation>
-    OPM_HOST_DEVICE static SaltArray<Evaluation>
-    molalityToMoleFrac_(const SaltArray<Evaluation>& mSalt)
-    {
-        Evaluation sum = 1.0;
-        const Scalar Mw = H2O::molarMass();
-        SaltArray<Evaluation> molFracArray;
-        for (std::size_t i = 0; i < mSalt.size(); ++i) {
-            auto sIdx = static_cast<SaltIndex>(i);
-            molFracArray[sIdx] = Mw * mSalt[sIdx];
-            sum += molFracArray[sIdx];
-        }
-        for (auto& elem : molFracArray) {
-            elem /= sum;
-        }
-        return molFracArray;
-    }
 
     /*!
     * \brief Fixed-point iterations for high-temperature cases
@@ -643,7 +579,7 @@ private:
     fixPointIterSolubility_(const CO2Parameters& params,
                             const Evaluation& temperature,
                             const Evaluation& pg,
-                            const SaltArray<Evaluation>& mSalt,
+                            const SaltArray<Evaluation, SaltMolality>& mSalt,
                             const int& activityModel,
                             bool extrapolate = false)
     {
@@ -720,7 +656,7 @@ private:
     nonIterSolubility_(const CO2Parameters& params,
                        const Evaluation& temperature,
                        const Evaluation& pg,
-                       const SaltArray<Evaluation>& mSalt,
+                       const SaltArray<Evaluation, SaltMolality>& mSalt,
                        const int& activityModel,
                        bool extrapolate = false)
     {
@@ -763,7 +699,7 @@ private:
                       const Evaluation& pg,
                       const Evaluation& xCO2,
                       const Evaluation& yH2O,
-                      const SaltArray<Evaluation>& mSalt,
+                      const SaltArray<Evaluation, SaltMolality>& mSalt,
                       const Evaluation& gammaNaCl,
                       const bool& highTemp,
                       const bool& iterate,
@@ -810,7 +746,7 @@ private:
     mutualSolubilitySpycherPruess2005_(const CO2Parameters& params,
                                        const Evaluation& temperature,
                                        const Evaluation& pg,
-                                       const SaltArray<Evaluation>& mSalt,
+                                       const SaltArray<Evaluation, SaltMolality>& mSalt,
                                        bool extrapolate = false)
     {
         // Calculate A and B (without salt effect); Eqs. (8) and (9)
@@ -845,12 +781,12 @@ private:
                                          3);
 
             // Molality with salt
-            Evaluation mCO2 = (xCO2 * invMmH2O) / (1 - xCO2); // pure water
+            Evaluation mCO2 = xCO2 * invMmH2O / (1 - xCO2); // pure water
             mCO2 /= gammaNaCl;
             xCO2 = mCO2 / (mSalt.sum() + invMmH2O + mCO2);
 
             // new yH2O with salt
-            const auto& xSalt = molalityToMoleFrac_(mSalt);
+            const auto xSalt = mSalt.template convert_to<SaltMoleFraction>();
             yH2O = A * (1 - xCO2 - xSalt.sum());
         }
 
@@ -948,7 +884,7 @@ private:
     OPM_HOST_DEVICE static Evaluation
     activityCoefficientSalt_(const Evaluation& temperature,
                              const Evaluation& pg,
-                             const SaltArray<Evaluation>& mSalt,
+                             const SaltArray<Evaluation, SaltMolality>& mSalt,
                              const Evaluation& xCO2,
                              const int& activityModel)
     {

@@ -79,7 +79,7 @@ class Co2GasPvt
     using H2O = SimpleHuDuanH2O<Scalar>;
     using Brine = ::Opm::BrineDynamic<Scalar, H2O>;
     using ContainerT = Storage<Scalar>;
-    using SaltContainerT = Storage<SaltArray<Scalar> >;
+    using SaltContainerT = Storage<SaltArray<Scalar, SaltMassFraction> >;
     static constexpr bool extrapolate = true;
 
 public:
@@ -150,7 +150,7 @@ public:
     */
     OPM_HOST_DEVICE void setActivityModelSalt(int activityModel);
 
-    OPM_HOST_DEVICE void setSaltComponents(const SaltArray<double>& salinitc);
+    OPM_HOST_DEVICE void setSaltComponents(const SaltArray<double, SaltMassFraction>& salinitc);
 
     /*!
      * \brief Set thermal mixing model for co2 in brine
@@ -284,8 +284,7 @@ public:
                                                                      const Evaluation& pressure) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
-        SaltArray<Evaluation> evalSalinity;
-        evalSalinity = salinity_[regionIdx];
+        SaltArray<Evaluation, SaltMassFraction> evalSalinity(salinity_[regionIdx]);
         const Evaluation rvw = rvwSat_(regionIdx, temperature, pressure, evalSalinity);
         return inverseFormationVolumeFactor(regionIdx, temperature,
                                             pressure, Evaluation(0.0), rvw);
@@ -312,8 +311,7 @@ public:
                                                                 const Evaluation& temperature,
                                                                 const Evaluation& pressure) const
     {
-        SaltArray<Evaluation> evalSalinity;
-        evalSalinity = salinity_[regionIdx];
+        SaltArray<Evaluation, SaltMassFraction> evalSalinity(salinity_[regionIdx]);
         return rvwSat_(regionIdx, temperature, pressure, evalSalinity);
     }
 
@@ -344,8 +342,7 @@ public:
                                                               const Evaluation& /*oilSaturation*/,
                                                               const Evaluation& /*maxOilSaturation*/) const
     {
-        SaltArray<Evaluation> evalSalinity;
-        evalSalinity = salinity_[regionIdx];
+        SaltArray<Evaluation, SaltMassFraction> evalSalinity(salinity_[regionIdx]);
         return rvwSat_(regionIdx, temperature, pressure, evalSalinity);
     }
 
@@ -357,8 +354,7 @@ public:
                                                               const Evaluation& temperature,
                                                               const Evaluation& pressure) const
     {
-        SaltArray<Evaluation> evalSalinity;
-        evalSalinity = salinity_[regionIdx];
+        SaltArray<Evaluation, SaltMassFraction> evalSalinity(salinity_[regionIdx]);
         return rvwSat_(regionIdx, temperature, pressure, evalSalinity);
     }
 
@@ -381,7 +377,7 @@ public:
     OPM_HOST_DEVICE Scalar waterReferenceDensity(unsigned regionIdx) const
     { return brineReferenceDensity_[regionIdx]; }
 
-    OPM_HOST_DEVICE const SaltArray<Scalar>& salinity(unsigned regionIdx) const
+    OPM_HOST_DEVICE const SaltArray<Scalar, SaltMassFraction>& salinity(unsigned regionIdx) const
     { return salinity_[regionIdx]; }
 
     void setEzrokhiDenCoeff(const std::vector<EzrokhiTable>& denaqa);
@@ -424,7 +420,7 @@ private:
     OPM_HOST_DEVICE LhsEval rvwSat_(unsigned regionIdx,
                                     const LhsEval& temperature,
                                     const LhsEval& pressure,
-                                    const SaltArray<LhsEval>& salinity) const
+                                    const SaltArray<LhsEval, SaltMassFraction>& salinity) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         if (!enableVaporization_) {
@@ -448,7 +444,9 @@ private:
         // normalize the phase compositions
         xgH2O = max(0.0, min(1.0, xgH2O));
 
-        return convertXgWToRvw(convertxgWToXgW(xgH2O, salinity), regionIdx);
+        return convertXgWToRvw(
+            convertxgWToXgW(xgH2O, salinity.template convert_to<SaltMoleFraction>()),
+            regionIdx);
     }
 
     /*!
@@ -483,8 +481,9 @@ private:
      * \brief Convert a water mole fraction in the gas phase the corresponding mass fraction.
      */
     template <class LhsEval>
-    OPM_HOST_DEVICE LhsEval convertxgWToXgW(const LhsEval& xgW,
-                                            const SaltArray<LhsEval>& salinity) const
+    OPM_HOST_DEVICE LhsEval
+    convertxgWToXgW(const LhsEval& xgW,
+                    const SaltArray<LhsEval, SaltMoleFraction>& salinity) const
     {
         OPM_TIMEFUNCTION_LOCAL(Subsystem::PvtProps);
         const Scalar M_CO2 = CO2::molarMass();
@@ -504,13 +503,13 @@ private:
 #endif // HAVE_CUDA
 
     template <class LhsEval>
-    OPM_HOST_DEVICE SaltArray<LhsEval>
+    OPM_HOST_DEVICE SaltArray<LhsEval, SaltMassFraction>
     salinityFromConcentration(const LhsEval& T,
                               const LhsEval& P,
                               const LhsEval& saltConcentration) const
     {
         const LhsEval salt = saltConcentration / H2O::liquidDensity(T, P, true);
-        SaltArray<LhsEval> S;
+        SaltArray<LhsEval, SaltMassFraction> S;
         S[SaltIndex::NA] = salt;
         S[SaltIndex::CL] = salt;
         return S;

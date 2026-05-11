@@ -59,7 +59,7 @@ public:
 
     double salinity() const;
 
-    const SaltArray<double>& saltComponents() const;
+    const SaltArray<double, SaltMassFraction>& saltComponents() const;
 
     int actco2s() const;
 
@@ -91,7 +91,7 @@ private:
     std::vector<EzrokhiTable> denaqa_tables;
     std::vector<EzrokhiTable> viscaqa_tables;
     double salt{0.0};
-    SaltArray<double> saltArray;
+    SaltArray<double, SaltMassFraction> saltArray;
     static constexpr double MmNaCl = 58.44e-3;
     static constexpr double MmH2O = 18e-3;
     int activityModel{3};

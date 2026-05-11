@@ -190,7 +190,7 @@ setEzrokhiDenCoeff(const std::vector<EzrokhiTable>& denaqa)
 template <class Scalar, template<class> class Storage>
 OPM_HOST_DEVICE void
 Co2GasPvt<Scalar, Storage>::
-setSaltComponents(const SaltArray<double>& salinitc)
+setSaltComponents(const SaltArray<double, SaltMassFraction>& salinitc)
 {
     if (salinity_.empty()) {
         throw std::runtime_error("The salt components are empty");

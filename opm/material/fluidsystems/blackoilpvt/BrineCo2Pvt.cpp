@@ -236,7 +236,7 @@ setEzrokhiViscCoeff(const std::vector<EzrokhiTable>& viscaqa)
 template <class Scalar, template <class> class Storage>
 void
 BrineCo2Pvt<Scalar, Storage>::
-setSaltComponents(const SaltArray<double>& salinitc)
+setSaltComponents(const SaltArray<double, SaltMassFraction>& salinitc)
 {
     if (salinity_.empty()) {
         throw std::runtime_error("The salt components are empty");
