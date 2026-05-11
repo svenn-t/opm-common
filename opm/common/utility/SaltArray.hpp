@@ -36,19 +36,45 @@
 
 namespace Opm
 {
+
+// SaltUnit tags for SaltArray
+struct SaltMolality
+{
+};
+
+struct SaltMassFraction
+{
+};
+
+struct SaltMoleFraction
+{
+};
+
+// Helper conversion struct
+template <class FromSaltUnit, class ToSaltUnit>
+struct SaltUnitConverter;
+
+/// Salt ion indices for SaltArray
 enum class SaltIndex : std::size_t
 {
     NA, K, CA, MG, CL, SO4,
     NCOMP // DO NOT CHANGE! Must be the last enum to set size of SaltArray!
 };
 
+/// Enum for classifying cations and anions
 enum class IonType
 {
     Cation, Anion
 };
 
+/*!
+ * Converts ion string name to index
+ *
+ * @param s Ion name
+ * @return Index of salt ion
+ */
 inline SaltIndex
-saltIndexfromString(const std::string& s)
+saltIndexFromString(const std::string& s)
 {
     if (s == "NA") {
         return SaltIndex::NA;
@@ -71,6 +97,12 @@ saltIndexfromString(const std::string& s)
     throw std::invalid_argument("SaltIndex not valid!");
 }
 
+/*!
+ * Catagorize ion in cation or anion
+ *
+ * @param s Index of salt ion
+ * @return Cation or anion catagory
+ */
 inline IonType
 categorizeIon(const SaltIndex s)
 {
@@ -88,6 +120,12 @@ categorizeIon(const SaltIndex s)
     }
 }
 
+/*!
+ * Returns the ion strength or salt ion. Positive for cations; negative for anions.
+ *
+ * @param s Index of salt ion
+ * @return Ion strength
+ */
 inline short
 ionStrength(const SaltIndex s)
 {
@@ -109,6 +147,12 @@ ionStrength(const SaltIndex s)
     }
 }
 
+/*!
+ * Get molar mass of salt ion
+ *
+ * @param ind Index of salt ion
+ * @return Molar mass
+ */
 template <class Scalar>
 Scalar
 saltMolarMass(const SaltIndex ind)
@@ -131,94 +175,190 @@ saltMolarMass(const SaltIndex ind)
     }
 }
 
-template <class T>
+/*!
+ * Wrapper around std::array for salt components with some convenience functions and conversion
+ * to SaltArrays with different units
+ *
+ * @tparam T Value type (typically Scalar or Evaluation)
+ * @tparam SaltUnit Unit of salt array elements
+ */
+template <class T, class SaltUnit>
 class SaltArray
 {
 public:
-    static constexpr std::size_t ncomp = static_cast<std::size_t>(SaltIndex::NCOMP);
     using SaltIndexPair = std::pair<std::vector<SaltIndex>, std::vector<SaltIndex> >;
 
+    static constexpr std::size_t ncomp = static_cast<std::size_t>(SaltIndex::NCOMP);
+
+    /*!
+     * Default constructor
+     */
     SaltArray() = default;
 
-    void assign(const DeckRecord& record)
+    /*!
+     * Conversion constructor
+     *
+     * @tparam U Value type different from T
+     * @param other Salt array to convert from
+     */
+    template <class U>
+    explicit SaltArray(const SaltArray<U, SaltUnit>& other)
+    {
+        std::ranges::transform(other,
+                               saltData_.begin(),
+                               [](const U& val) {
+                                   return static_cast<T>(val);
+                               });
+    }
+
+    /*!
+     * Assign array elements from a deck array, e.g. SALINITC
+     *
+     * @param record Deck record array
+     */
+    void assignFromDeckRecord(const DeckRecord& record)
     {
         assert(record.size() == saltData_.size());
-        T sum = 1.0;
         for (const auto& item : record) {
-            auto index = saltIndexfromString(item.name());
-            auto mMxMolal = saltMolarMass<T>(index) * static_cast<T>(item.get<double>(0));
-            (*this)[index] = mMxMolal;
-            sum += mMxMolal;
-        }
-        for (auto& elem : saltData_) {
-            elem /= sum;
+            auto recItem = static_cast<T>(item.get<double>(0));
+            auto index = saltIndexFromString(item.name());
+            (*this)[index] = recItem;
         }
     }
 
+    /*!
+     * Return read-only view of array element at a salt ion index
+     *
+     * @param ind Index of salt ion
+     * @return Array element
+     */
     const T& operator[](const SaltIndex ind) const
     {
         return saltData_[static_cast<std::size_t>(ind)];
     }
 
+    /*!
+     * Return array element at a salt ion index
+     *
+     * @param ind Index of salt ion
+     * @return Array element
+     */
     T& operator[](const SaltIndex ind)
     {
         return saltData_[static_cast<std::size_t>(ind)];
     }
 
+    /*!
+     * Check for equal SaltArray
+     *
+     * @param other Comparison array
+     * @return True if arrays are equal
+     */
     bool operator==(const SaltArray& other) const
     {
         return saltData_ == other.saltData_;
     }
 
+    /*!
+     * Default copy assignment
+     *
+     * @param other Array to copy
+     * @return Copy of other array
+     */
     SaltArray& operator=(const SaltArray& other) = default;
 
+    /*!
+     * Conversion copy assignment for simple assignment to new value type (that supports conversion)
+     *
+     * @tparam U Value type of other array
+     * @param other Array to copy
+     * @return Copy of array
+     */
     template <class U>
-    SaltArray& operator=(const SaltArray<U>& other)
+    SaltArray& operator=(const SaltArray<U, SaltUnit>& other)
     {
-        std::transform(other.begin(),
-                       other.end(),
-                       saltData_.begin(),
-                       [](const U& val) {
-                           return static_cast<T>(val);
-                       });
+        std::ranges::transform(other,
+                               saltData_.begin(),
+                               [](const U& val) {
+                                   return static_cast<T>(val);
+                               });
         return *this;
     }
 
+    /*!
+     * Array begin iterator
+     *
+     * @return Iterator
+     */
     auto begin()
     {
         return saltData_.begin();
     }
 
+    /*!
+     * Array end iterator
+     *
+     * @return Iterator
+     */
     auto end()
     {
         return saltData_.end();
     }
 
+    /*!
+     * Read-only view of array begin iterator
+     *
+     * @return Iterator
+     */
     [[nodiscard]] auto begin() const
     {
         return saltData_.begin();
     }
 
+    /*!
+     * Read-only view of array end iterator
+     *
+     * @return Iterator
+     */
     [[nodiscard]] auto end() const
     {
         return saltData_.end();
     }
 
+    /*!
+     * Size of array, which should be equal to number of supported ions in @ref SaltIndex
+     *
+     * @return Size of array
+     */
     [[nodiscard]] constexpr std::size_t size() const
     {
         return saltData_.size();
     }
 
+    /*!
+     * Sum of array elements.
+     * @note For mass and mole fraction arrays, 1 - sum() is equal to mass/mole fraction of H2O
+     *
+     * @return Sum
+     */
     T sum() const
     {
         return std::accumulate(begin(), end(), T{});
     }
 
+    /*!
+     * Fill all elements with zero
+     */
     void clear() noexcept
     {
         saltData_.fill(T{});
     }
 
+    /*!
+     * Check if any elements are non-zero
+     *
+     * @return True if any element non-zero
+     */
     [[nodiscard]] bool any_nonzero() const noexcept
     {
         return std::any_of(begin(),
@@ -228,7 +368,12 @@ public:
                            });
     }
 
-    [[nodiscard]] SaltIndexPair cation_anion_pair() const
+    /*!
+     * Get cations and anions of non-zero ions in descending ion strength
+     *
+     * @return Pair of cation and anion vectors
+     */
+    [[nodiscard]] SaltIndexPair cations_and_anions() const
     {
         std::vector<std::pair<short, SaltIndex> > cations;
         std::vector<std::pair<short, SaltIndex> > anions;
@@ -247,8 +392,7 @@ public:
             }
         }
 
-        // Sort by ion strength: descending for cations, ascending for anions (most to less
-        // negative)
+        // Sort by ion strength: descending for cations, ascending for anions
         std::ranges::sort(cations, std::ranges::greater{}, &std::pair<short, SaltIndex>::first);
         std::ranges::sort(anions, {}, &std::pair<short, SaltIndex>::first);
 
@@ -267,30 +411,209 @@ public:
         return {cationIndex, anionIndex};
     }
 
-    SaltArray<T> to_molality() const
+    /*!
+     * Return an array with elements converted to new unit
+     *
+     * @tparam NewSaltUnit New unit for returning array
+     * @return Converted array
+     */
+    template <class NewSaltUnit>
+    SaltArray<T, NewSaltUnit> convert_to() const
     {
-        SaltArray<T> molalityArray;
-        for (std::size_t i = 0; i < saltData_.size(); ++i) {
-            auto sIdx = static_cast<SaltIndex>(i);
-            molalityArray[sIdx] = (*this)[sIdx] / saltMolarMass<T>(sIdx);
-        }
-
-        T s = 1.0 - sum();
-        for (auto& elem : molalityArray) {
-            elem /= s;
-        }
-        return molalityArray;
+        return SaltUnitConverter<SaltUnit, NewSaltUnit>::template convert<T>(*this);
     }
 
-    template<class Serializer>
+    template <class Serializer>
     void serializeOp(Serializer& serializer)
     {
         serializer(saltData_);
     }
 
 private:
-    std::array<T, ncomp> saltData_{};
+    std::array<T, ncomp> saltData_{}; ///< Array of salt ion values
+}; // class SaltArray
+
+// ------------------------------------------
+// Conversion between different salt units
+// ------------------------------------------
+template <>
+struct SaltUnitConverter<SaltMassFraction, SaltMolality>
+{
+    /*!
+     * Convert mass fraction to molality:
+     * https://en.wikipedia.org/wiki/Molality#Mass_fraction
+     *
+     * @tparam T Value type
+     * @param saltArray Mass fraction array
+     * @return Molality array
+     */
+    template <class T>
+    static SaltArray<T, SaltMolality> convert(const SaltArray<T, SaltMassFraction>& saltArray)
+    {
+        SaltArray<T, SaltMolality> molalityArray;
+        for (std::size_t i = 0; i < saltArray.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            molalityArray[sIdx] = saltArray[sIdx] / saltMolarMass<T>(sIdx);
+        }
+
+        T s = 1.0 - saltArray.sum();
+        for (auto& elem : molalityArray) {
+            elem /= s;
+        }
+
+        return molalityArray;
+    }
+};
+
+template <>
+struct SaltUnitConverter<SaltMassFraction, SaltMoleFraction>
+{
+    /*!
+     * Convert mass fraction to mole fraction:
+     * https://en.wikipedia.org/wiki/Mass_fraction_(chemistry)#Mole_fraction
+     *
+     * @tparam T Value type
+     * @param saltArray Mass fraction array
+     * @return Mole fraction array
+     */
+    template <class T>
+    static SaltArray<T, SaltMoleFraction> convert(const SaltArray<T, SaltMassFraction>& saltArray)
+    {
+        SaltArray<T, SaltMoleFraction> moleFracArray;
+        T s = 1.0;
+        for (std::size_t i = 0; i < saltArray.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            moleFracArray[sIdx] = saltArray[sIdx] * 18.01518e-3 / saltMolarMass<T>(sIdx);
+            s += moleFracArray[sIdx] - saltArray[sIdx];
+        }
+
+        for (auto& elem : moleFracArray) {
+            elem /= s;
+        }
+
+        return moleFracArray;
+    }
+};
+
+template <>
+struct SaltUnitConverter<SaltMoleFraction, SaltMassFraction>
+{
+    /*!
+     * Convert mole fraction to mass fraction:
+     * https://en.wikipedia.org/wiki/Mole_fraction#Mass_fraction
+     *
+     * @tparam T Value type
+     * @param saltArray Mole fraction array
+     * @return Mass fraction array
+     */
+    template <class T>
+    static SaltArray<T, SaltMassFraction> convert(const SaltArray<T, SaltMoleFraction>& saltArray)
+    {
+        SaltArray<T, SaltMassFraction> massFracArray;
+        T s = 18.01518e-3;
+        for (std::size_t i = 0; i < saltArray.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            massFracArray[sIdx] = saltArray[sIdx] * saltMolarMass<T>(sIdx);
+            s += massFracArray[sIdx] - saltArray[sIdx] * 18.01518e-3;
+        }
+
+        for (auto& elem : massFracArray) {
+            elem /= s;
+        }
+
+        return massFracArray;
+    }
+};
+
+template <>
+struct SaltUnitConverter<SaltMoleFraction, SaltMolality>
+{
+    /*!
+     * Convert mole fraction to molality:
+     * https://en.wikipedia.org/wiki/Molality#Mole_fraction
+     *
+     * @tparam T Value type
+     * @param saltArray Mole fraction array
+     * @return Molality array
+     */
+    template <class T>
+    static SaltArray<T, SaltMolality> convert(const SaltArray<T, SaltMoleFraction>& saltArray)
+    {
+        SaltArray<T, SaltMolality> molalityArray;
+        for (std::size_t i = 0; i < saltArray.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            molalityArray[sIdx] = saltArray[sIdx] / 18.01518e-3;
+        }
+
+        T s = 1.0 - saltArray.sum();
+        for (auto& elem : molalityArray) {
+            elem /= s;
+        }
+
+        return molalityArray;
+    }
+};
+
+template <>
+struct SaltUnitConverter<SaltMolality, SaltMoleFraction>
+{
+    /*!
+     * Convert molality to mole fraction:
+     * https://en.wikipedia.org/wiki/Molality#Mole_fraction
+     *
+     * @tparam T Value type
+     * @param saltArray Molality array
+     * @return Mole fraction array
+     */
+    template <class T>
+    static SaltArray<T, SaltMoleFraction> convert(const SaltArray<T, SaltMolality>& saltArray)
+    {
+        SaltArray<T, SaltMoleFraction> moleFracArray;
+        T s = 1.0;
+        for (std::size_t i = 0; i < saltArray.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            moleFracArray[sIdx] = saltArray[sIdx] * 18.01518e-3;
+            s += moleFracArray[sIdx];
+        }
+
+        for (auto& elem : moleFracArray) {
+            elem /= s;
+        }
+
+        return moleFracArray;
+    }
+};
+
+template <>
+struct SaltUnitConverter<SaltMolality, SaltMassFraction>
+{
+    /*!
+     * Convert molality to mass fraction:
+     * https://en.wikipedia.org/wiki/Molality#Mass_fraction
+     *
+     * @tparam T Value type
+     * @param saltArray Molality array
+     * @return Mass fraction array
+     */
+    template <class T>
+    static SaltArray<T, SaltMassFraction> convert(const SaltArray<T, SaltMolality>& saltArray)
+    {
+        SaltArray<T, SaltMassFraction> massFracArray;
+        T s = 1.0;
+        for (std::size_t i = 0; i < saltArray.size(); ++i) {
+            auto sIdx = static_cast<SaltIndex>(i);
+            massFracArray[sIdx] = saltArray[sIdx] * saltMolarMass<T>(sIdx);
+            s += massFracArray[sIdx];
+        }
+
+        for (auto& elem : massFracArray) {
+            elem /= s;
+        }
+
+        return massFracArray;
+    }
 };
 
 }
+
 #endif //OPM_SALTARRAY_HPP

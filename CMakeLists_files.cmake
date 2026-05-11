@@ -550,6 +550,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/test_RPTConfig.cpp
   tests/test_rst.cpp
   tests/test_rst_netbalan.cpp
+  tests/test_SaltArray.cpp
   tests/test_ScheduleGrid.cpp
   tests/test_SegmentMatcher.cpp
   tests/test_Serialization.cpp
