@@ -356,6 +356,16 @@ public:
                         47 * pMPa * salinity)));
     }
 
+    /*!
+     * Density of liquid brine using multicomponent salts from Laliberte & Cooper,
+     * Journal of Chemical and Engineering Data, Vol. 49, No. 5, 2004.
+     *
+     * @param temperature Temperature [K]
+     * @param pressure Pressure [Pa]
+     * @param salinity Array of salt ions [kg ion/kg water]
+     * @param extrapolate Extrapolate pure water table
+     * @return Brine density [kg/m3]
+     */
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
     liquidDensityLC(const Evaluation& temperature,
@@ -372,6 +382,16 @@ public:
         return liquidDensityLaliberteCooper(temperature, pressure, salinity, rhow);
     }
 
+    /*!
+     * Density of liquid brine using multicomponent salts from Laliberte & Cooper,
+     * Journal of Chemical and Engineering Data, Vol. 49, No. 5, 2004.
+     *
+     * @param temperature Temperature [K]
+     * @param pressure Pressure [Pa]
+     * @param salinity Array of salt ions [kg ion/kg water]
+     * @param rhow Density pure water [kg/m3]
+     * @return Brine density [kg/m3]
+     */
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
     liquidDensityLaliberteCooper(const Evaluation& temperature,
@@ -479,6 +499,16 @@ public:
         return mu_brine/1000.0; // convert to [Pa s] (todo: check if correct cP->Pa s is times 10...)
     }
 
+    /*!
+     * Viscosity of liquid brine using multicomponent salts from Laliberte, Journal of Chemical
+     * and Engineering Data, Vol. 52, No. 2, 2007 and corrections paper Laliberte, Journal of
+     * Chemical and Engineering Data, Vol. 52, No. 4, 2007.
+     *
+     * @param temperature Temperature [K]
+     * @param pressure Pressure [Pa]
+     * @param salinity Array of salt ions [kg ion/kg water]
+     * @return Viscosity of brine [Pa*s]
+     */
     template <class Evaluation>
     OPM_HOST_DEVICE static Evaluation
     liquidViscosityLaliberte(const Evaluation& temperature,
@@ -527,33 +557,18 @@ private:
         return 58.44e-3;
     }
 
+    /// Supported electrolytes for Laliberte viscosity and Laliberte-Cooper density
     enum class SaltElectrolytes
     {
         CaCl2, KCl, K2SO4, MgCl2, MgSO4, NaCl, Na2SO4
     };
 
-    static constexpr std::string_view electrolytesToString(const SaltElectrolytes s)
-    {
-        switch (s) {
-        case SaltElectrolytes::CaCl2:
-            return "CaCl2";
-        case SaltElectrolytes::KCl:
-            return "KCl";
-        case SaltElectrolytes::K2SO4:
-            return "K2SO4";
-        case SaltElectrolytes::MgCl2:
-            return "MgCl2";
-        case SaltElectrolytes::MgSO4:
-            return "MgSO4";
-        case SaltElectrolytes::NaCl:
-            return "NaCl";
-        case SaltElectrolytes::Na2SO4:
-            return "Na2SO4";
-        default:
-            throw std::runtime_error("Unknown SaltElectrolytes");
-        }
-    }
-
+    /*!
+     * Molar mass of electrolyte
+     *
+     * @param e Electrolyte
+     * @return Molar mass [mol/kg]
+     */
     static Scalar electrolyteMolarMass(const SaltElectrolytes e)
     {
         switch (e) {
@@ -576,6 +591,16 @@ private:
         }
     }
 
+    /*!
+     * Calculate electrolytes from cations and anions, and adjust molality of cations and anions
+     * after generating electrolytes
+     *
+     * @param cationIdx Salt index of cation
+     * @param cation Molality of cation [mol cation/kg water]
+     * @param anionIdx Salt index of anion
+     * @param anion Molality of anion [mol anion/kg water]
+     * @return Electrolyte and its molality [mol electrolyte/kg water]
+     */
     template <class Evaluation>
     static std::pair<SaltElectrolytes, Evaluation>
     electrolytesAndRemainingMolal_(const SaltIndex cationIdx,
@@ -635,6 +660,11 @@ private:
         return electrolyte;
     }
 
+    /*!
+     * Convert electrolyte molality to mass fraction
+     *
+     * @param electrolyte Vector of electrolytes and their molality
+     */
     template <class Evaluation>
     static void
     electrolytesMolalToMassFrac_(std::vector<std::pair<SaltElectrolytes, Evaluation> >& electrolyte)
@@ -650,6 +680,12 @@ private:
         }
     }
 
+    /*!
+     * Generate electrolytes from salt ions
+     *
+     * @param salinity Array of salt ions
+     * @return Vector of electrolytes and their mass fractions
+     */
     template <class Evaluation>
     static std::vector<std::pair<SaltElectrolytes, Evaluation> >
     electrolytesFromSaltComponents_(const SaltArray<Evaluation, SaltMassFraction>& salinity)
@@ -692,6 +728,12 @@ private:
         return electrolytes;
     }
 
+    /*!
+     * Get coefficients for calculating density with electrolyte
+     *
+     * @param electrolyte Electrolyte index
+     * @return Coefficients for electrolyte
+     */
     static std::span<const Scalar, 5>
     LaliberteCooperCoeff_(const SaltElectrolytes electrolyte)
     {
@@ -719,6 +761,12 @@ private:
         throw std::runtime_error("Unknown SaltElectrolytes!");
     }
 
+    /*!
+     * Get coefficients for calculating viscosity with electrolyte
+     *
+     * @param electrolyte Electrolyte index
+     * @return Coefficients for electrolyte
+     */
     static std::span<const Scalar, 6>
     LaliberteCoeff_(const SaltElectrolytes electrolyte)
     {
@@ -755,7 +803,8 @@ private:
     static constexpr Scalar cDensNaCl[5] = {-0.00433, 0.06471, 1.01660, 0.014624, 3315.6};
     static constexpr Scalar cDensNa2SO4[5] = {-1.2095e-7, 4.3474e-7, 0.15364, 0.0072514, 4731.5};
 
-    // Coefficients for viscosity from Laliberte, J. Chem. Eng. Data 52, 2007
+    // Coefficients for viscosity from Laliberte, J. Chem. Eng. Data 52 (2), 2007 and the
+    // correction paper Laliberte, J. Chem. Eng. Data 52(4), 2007
     static constexpr Scalar cViscCaCl2[6] = {32.028, 0.78792, -1.1495, 0.0026995, 780860, 5.8442};
     static constexpr Scalar cViscKCl[6] = {6.4883, 1.3175, -0.77785, 0.092722, -1.3, 2.0811};
     static constexpr Scalar cViscK2SO4[6] = {-983.76, 983.76, 984.52, 0.0038473, -9.5001, 2.1916};
