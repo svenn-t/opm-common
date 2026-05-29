@@ -712,6 +712,10 @@ MechSolver::MechSolver(const Deck& deck)
                 this->m_fixed_stress_min_iter,
                 this->m_fixed_stress_max_iter));
         }
+
+        // Set back coupling to Flow
+        this->m_backcoupling_to_flow =
+            record.getItem<MECHSOLV::BACKCOUPLING_TO_FLOW>().get<std::string>(0) == "YES";
     }
 }
 

@@ -490,6 +490,7 @@ public:
         serializer(this->m_coupling);
         serializer(this->m_fixed_stress_min_iter);
         serializer(this->m_fixed_stress_max_iter);
+        serializer(this->m_backcoupling_to_flow);
     }
 
     bool laggedScheme() const
@@ -517,11 +518,17 @@ public:
         return this->m_solver == Solver::TPSA;
     }
 
+    bool backcoupling() const
+    {
+        return this->m_backcoupling_to_flow;
+    }
+
 private:
     Solver m_solver{};
     CouplingScheme m_coupling = CouplingScheme::Lagged;
     int m_fixed_stress_min_iter{};
     int m_fixed_stress_max_iter{};
+    bool m_backcoupling_to_flow{};
 };
 
 

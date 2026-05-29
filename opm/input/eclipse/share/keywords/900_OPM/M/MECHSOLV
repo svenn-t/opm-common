@@ -30,6 +30,12 @@
       "name": "FIXED_STRESS_MAX_ITER",
       "value_type": "INT",
       "default": 5
+    },
+    {
+      "item": 5,
+      "name": "BACKCOUPLING_TO_FLOW",
+      "value_type": "STRING",
+      "default": "YES"
     }
   ]
 }
