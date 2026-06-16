@@ -59,6 +59,9 @@ BCMECHType bcmechtype(const std::string& s) {
     if (s == "FIXED")
         return BCMECHType::FIXED;
 
+    if (s == "SPRING")
+        return BCMECHType::SPRING;
+
     if (s == "NONE")
         return BCMECHType::NONE;
 
@@ -153,6 +156,14 @@ BCProp::BCFace::BCFace(const DeckRecord& record) :
     }
     if (const auto& P = record.getItem<BCKEY::FIXEDZ>(); ! P.defaultApplied(0)) {
         mechbcvaluetmp.fixeddir[2] = P.get<int>(0);
+        allDefault = false;
+    }
+    if (const auto& P = record.getItem<BCKEY::DISTANCE>(); !P.defaultApplied(0)) {
+        mechbcvaluetmp.distance = P.getSIDouble(0);
+        allDefault = false;
+    }
+    if (const auto& P = record.getItem<BCKEY::SHEAR_MODULUS>(); !P.defaultApplied(0)) {
+        mechbcvaluetmp.shearmodulus = P.getSIDouble(0);
         allDefault = false;
     }
     if (!allDefault) {
