@@ -44,6 +44,7 @@
 #include <opm/material/fluidmatrixinteractions/ParkerLenhard.hpp>
 #include <opm/material/fluidmatrixinteractions/LinearMaterial.hpp>
 #include <opm/material/fluidmatrixinteractions/VanGenuchten.hpp>
+#include <opm/material/fluidmatrixinteractions/VeSharpInterfaceLaw.hpp>
 #include <opm/material/fluidmatrixinteractions/NullMaterial.hpp>
 #include <opm/material/fluidmatrixinteractions/RegularizedBrooksCorey.hpp>
 #include <opm/material/fluidmatrixinteractions/RegularizedVanGenuchten.hpp>
@@ -410,6 +411,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ApiConformance, Scalar, Types)
     }
     {
         using MaterialLaw = Opm::RegularizedVanGenuchten<TwoPhaseTraits>;
+        testGenericApi<MaterialLaw, TwoPhaseFluidState>();
+        testTwoPhaseApi<MaterialLaw, TwoPhaseFluidState>();
+        testTwoPhaseSatApi<MaterialLaw, TwoPhaseFluidState>();
+    }
+    {
+        using MaterialLaw = Opm::VeSharpInterfaceLaw<TwoPhaseTraits>;
         testGenericApi<MaterialLaw, TwoPhaseFluidState>();
         testTwoPhaseApi<MaterialLaw, TwoPhaseFluidState>();
         testTwoPhaseSatApi<MaterialLaw, TwoPhaseFluidState>();
