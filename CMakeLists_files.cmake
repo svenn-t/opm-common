@@ -611,6 +611,7 @@ list(APPEND TEST_SOURCE_FILES
   tests/material/test_eclmateriallawmanager.cpp
   tests/material/test_hysteresis.cpp
   tests/material/test_spline.cpp
+  tests/material/test_vesharpinterfacelaw.cpp
   tests/ml/test_ml_model.cpp
   tests/ml/test_ml_layer.cpp
   tests/parser/ACTIONX.cpp
@@ -1485,6 +1486,8 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/material/fluidmatrixinteractions/TwoPhaseLETCurvesParams.hpp
   opm/material/fluidmatrixinteractions/VanGenuchten.hpp
   opm/material/fluidmatrixinteractions/VanGenuchtenParams.hpp
+  opm/material/fluidmatrixinteractions/VeSharpInterfaceLaw.hpp
+  opm/material/fluidmatrixinteractions/VeSharpInterfaceLawParams.hpp
   opm/material/fluidstates/BlackOilFluidState.hpp
   opm/material/fluidstates/CompositionalFluidState.hpp
   opm/material/fluidstates/FluidStateCompositionModules.hpp
