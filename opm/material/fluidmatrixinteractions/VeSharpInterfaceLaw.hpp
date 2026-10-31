@@ -38,56 +38,35 @@ namespace Opm
 /*!
  * \ingroup FluidMatrixInteractions
  *
- * \brief Vertically upscaled capillary pressure and relative permeabilities
- *        of the sharp-interface vertical-equilibrium (VE) model.
+ * \brief Vertically upscaled saturation functions of the sharp-interface
+ *        vertical-equilibrium (VE) model.
  *
- * The non-wetting phase (CO2) forms a plume of thickness \f$h\f$ below the
- * top of a layer of thickness \f$H\f$. The wetting phase (brine) in the plume
- * is at its residual saturation \f$S_{wr}\f$. Between the plume and the
- * maximum plume thickness \f$h_{max}\f$ reached so far, the non-wetting phase
- * is trapped at its residual saturation \f$S_{nr}\f$. Below that, the layer
- * is filled with the wetting phase. The vertically averaged non-wetting
- * phase saturation thus is
+ * A non-wetting phase plume of thickness \f$h\f$ lies below the top of a layer
+ * of thickness \f$H\f$, with residual wetting phase \f$S_{wr}\f$ in the plume
+ * and trapped non-wetting phase \f$S_{nr}\f$ down to the maximum plume
+ * thickness \f$h_{max}\f$:
  * \f[
  * S_n H = h (1 - S_{wr}) + (h_{max} - h) S_{nr} \;.
  * \f]
+ * The capillary pressure \f$(\rho_w - \rho_n) g h\f$ depends on the densities,
+ * so this law returns the normalized capillary pressure \f$h/H\f$. With the
+ * transmissivity fraction \f$F(z)\f$ above the relative depth \f$z\f$, the
+ * relative permeabilities are
+ * \f$k_{rw} = 1 - F(h_{max}/H) + k_{rw}^{end} (F(h_{max}/H) - F(h/H))\f$ and
+ * \f$k_{rn}(F(h/H))\f$ of VeNonWettingRelpermModel.
  *
- * The phases are in vertical equilibrium, so the capillary pressure at the
- * top of the layer is
- * \f[
- * p_{c} = (\rho_w - \rho_n) g H \hat{h} \;.
- * \f]
- * Only the relative plume thickness \f$\hat{h} = h/H\f$ is a saturation
- * function. Thus, the capillary pressure of this law is the normalized
- * capillary pressure \f$\hat{h}\f$, i.e., the capillary pressure divided by
- * \f$(\rho_w - \rho_n) g H\f$. The model scales it with the phase densities,
- * the gravity and the layer thickness. Likewise, the inverse functions expect
- * the normalized capillary pressure.
+ * \tparam TraitsT The material traits.
+ * \tparam ParamsT The parameter class.
  *
- * The relative permeabilities are thickness averages weighted by the
- * permeability of the sub-layers (if any). With \f$F(z)\f$ the fraction of
- * the layer transmissivity above the relative depth \f$z\f$, \f$\hat{h} =
- * h/H\f$ and \f$\hat{h}_{max} = h_{max}/H\f$, the wetting phase relative
- * permeability is
- * \f[
- * k_{rw} = 1 - F(\hat{h}_{max}) + k_{rw}^{end} (F(\hat{h}_{max}) - F(\hat{h}))
- * \f]
- * and the non-wetting phase relative permeability is a function of the
- * plume fraction \f$g = F(\hat{h})\f$ given by VeNonWettingRelpermModel.
- * Both are limited to one.
- *
- * Directional relative permeabilities are obtained by using one parameter
- * object per direction.
- *
- *\see VeSharpInterfaceLawParams
+ * \see VeSharpInterfaceLawParams
  */
 template <class TraitsT, class ParamsT = VeSharpInterfaceLawParams<TraitsT>>
 class VeSharpInterfaceLaw : public TraitsT
 {
 public:
-    using Traits = TraitsT;
-    using Params = ParamsT;
-    using Scalar = typename Traits::Scalar;
+    using Traits = TraitsT; //!< The material traits
+    using Params = ParamsT; //!< The parameter class
+    using Scalar = typename Traits::Scalar; //!< The floating point type
 
     //! The number of fluid phases to which this material law applies.
     static constexpr int numPhases = Traits::numPhases;
@@ -120,7 +99,11 @@ public:
     static constexpr bool isCompositionDependent = false;
 
     /*!
-     * \brief The normalized capillary pressure-saturation curves.
+     * \brief The normalized capillary pressures.
+     *
+     * \param values The capillary pressures of the phases.
+     * \param params The material law parameters.
+     * \param fs The fluid state.
      */
     template <class Container, class FluidState>
     static void capillaryPressures(Container& values, const Params& params, const FluidState& fs)
@@ -132,8 +115,11 @@ public:
     }
 
     /*!
-     * \brief Calculate the saturations of the phases starting from
-     *        their normalized pressure difference.
+     * \brief The saturations from the normalized pressure difference.
+     *
+     * \param values The saturations of the phases.
+     * \param params The material law parameters.
+     * \param fs The fluid state.
      */
     template <class Container, class FluidState>
     static void saturations(Container& values, const Params& params, const FluidState& fs)
@@ -145,7 +131,11 @@ public:
     }
 
     /*!
-     * \brief The relative permeability-saturation curves.
+     * \brief The relative permeabilities.
+     *
+     * \param values The relative permeabilities of the phases.
+     * \param params The material law parameters.
+     * \param fs The fluid state.
      */
     template <class Container, class FluidState>
     static void
@@ -158,8 +148,11 @@ public:
     }
 
     /*!
-     * \brief The normalized capillary pressure at the top of the layer, i.e.,
-     *        the relative plume thickness \f$h/H\f$.
+     * \brief The normalized capillary pressure \f$h/H\f$.
+     *
+     * \param params The material law parameters.
+     * \param fs The fluid state.
+     * \return The normalized capillary pressure.
      */
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation pcnw(const Params& params, const FluidState& fs)
@@ -168,12 +161,26 @@ public:
         return twoPhaseSatPcnw(params, Sw);
     }
 
+    /*!
+     * \brief The normalized capillary pressure \f$h/H\f$.
+     *
+     * \param params The material law parameters.
+     * \param Sw The wetting phase saturation.
+     * \return The normalized capillary pressure.
+     */
     template <class Evaluation>
     static Evaluation twoPhaseSatPcnw(const Params& params, const Evaluation& Sw)
     {
         return plumeFraction(params, 1.0 - Sw);
     }
 
+    /*!
+     * \brief The wetting phase saturation from the normalized capillary pressure.
+     *
+     * \param params The material law parameters.
+     * \param pcnw The normalized capillary pressure.
+     * \return The wetting phase saturation.
+     */
     template <class Evaluation>
     static Evaluation twoPhaseSatPcnwInv(const Params& params, const Evaluation& pcnw)
     {
@@ -181,8 +188,11 @@ public:
     }
 
     /*!
-     * \brief The wetting phase saturation from the normalized pressure
-     *        difference of the fluid state.
+     * \brief The wetting phase saturation from the normalized pressure difference.
+     *
+     * \param params The material law parameters.
+     * \param fs The fluid state.
+     * \return The wetting phase saturation.
      */
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation Sw(const Params& params, const FluidState& fs)
@@ -192,6 +202,13 @@ public:
         return twoPhaseSatSw(params, pc);
     }
 
+    /*!
+     * \brief The wetting phase saturation from the normalized capillary pressure.
+     *
+     * \param params The material law parameters.
+     * \param pc The normalized capillary pressure.
+     * \return The wetting phase saturation.
+     */
     template <class Evaluation>
     static Evaluation twoPhaseSatSw(const Params& params, const Evaluation& pc)
     {
@@ -199,8 +216,11 @@ public:
     }
 
     /*!
-     * \brief The non-wetting phase saturation from the normalized pressure
-     *        difference of the fluid state.
+     * \brief The non-wetting phase saturation from the normalized pressure difference.
+     *
+     * \param params The material law parameters.
+     * \param fs The fluid state.
+     * \return The non-wetting phase saturation.
      */
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation Sn(const Params& params, const FluidState& fs)
@@ -208,6 +228,13 @@ public:
         return 1.0 - Sw<FluidState, Evaluation>(params, fs);
     }
 
+    /*!
+     * \brief The non-wetting phase saturation from the normalized capillary pressure.
+     *
+     * \param params The material law parameters.
+     * \param pc The normalized capillary pressure.
+     * \return The non-wetting phase saturation.
+     */
     template <class Evaluation>
     static Evaluation twoPhaseSatSn(const Params& params, const Evaluation& pc)
     {
@@ -216,6 +243,10 @@ public:
 
     /*!
      * \brief The relative permeability of the wetting phase.
+     *
+     * \param params The material law parameters.
+     * \param fs The fluid state.
+     * \return The relative permeability.
      */
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation krw(const Params& params, const FluidState& fs)
@@ -224,6 +255,13 @@ public:
         return twoPhaseSatKrw(params, Sw);
     }
 
+    /*!
+     * \brief The relative permeability of the wetting phase.
+     *
+     * \param params The material law parameters.
+     * \param Sw The wetting phase saturation.
+     * \return The relative permeability.
+     */
     template <class Evaluation>
     static Evaluation twoPhaseSatKrw(const Params& params, const Evaluation& Sw)
     {
@@ -244,6 +282,10 @@ public:
 
     /*!
      * \brief The relative permeability of the non-wetting phase.
+     *
+     * \param params The material law parameters.
+     * \param fs The fluid state.
+     * \return The relative permeability.
      */
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation krn(const Params& params, const FluidState& fs)
@@ -252,6 +294,13 @@ public:
         return twoPhaseSatKrn(params, Sw);
     }
 
+    /*!
+     * \brief The relative permeability of the non-wetting phase.
+     *
+     * \param params The material law parameters.
+     * \param Sw The wetting phase saturation.
+     * \return The relative permeability.
+     */
     template <class Evaluation>
     static Evaluation twoPhaseSatKrn(const Params& params, const Evaluation& Sw)
     {
@@ -282,6 +331,10 @@ public:
 
     /*!
      * \brief The relative thickness \f$h/H\f$ of the mobile plume.
+     *
+     * \param params The material law parameters.
+     * \param Sn The non-wetting phase saturation.
+     * \return The relative plume thickness.
      */
     template <class Evaluation>
     static Evaluation plumeFraction(const Params& params, const Evaluation& Sn)
@@ -298,8 +351,11 @@ public:
     }
 
     /*!
-     * \brief The relative thickness \f$(h_{max} - h)/H\f$ of the zone with
-     *        trapped non-wetting phase below the plume.
+     * \brief The relative thickness \f$(h_{max} - h)/H\f$ of the trapped zone.
+     *
+     * \param params The material law parameters.
+     * \param Sn The non-wetting phase saturation.
+     * \return The relative thickness of the trapped zone.
      */
     template <class Evaluation>
     static Evaluation residualFraction(const Params& params, const Evaluation& Sn)
@@ -308,8 +364,11 @@ public:
     }
 
     /*!
-     * \brief The non-wetting phase saturation for a given relative plume
-     *        thickness \f$h/H\f$ and the history of the parameter object.
+     * \brief The non-wetting phase saturation of a relative plume thickness.
+     *
+     * \param params The material law parameters.
+     * \param plumeFraction The relative plume thickness \f$h/H\f$.
+     * \return The non-wetting phase saturation.
      */
     template <class Evaluation>
     static Evaluation nonWettingSaturation(const Params& params, const Evaluation& plumeFraction)
@@ -325,13 +384,11 @@ public:
     }
 
     /*!
-     * \brief Reduce the maximum plume thickness after non-wetting phase has
-     *        been removed by dissolution.
+     * \brief Reduce the maximum plume thickness after dissolution.
      *
-     * The trapped non-wetting phase is removed first, i.e., the plume
-     * thickness is kept unchanged while the residual zone shrinks. Once the
-     * residual zone is used up, the plume itself shrinks.
+     * The trapped non-wetting phase dissolves first, then the plume.
      *
+     * \param params The material law parameters to update.
      * \param SnBefore The non-wetting phase saturation before dissolution.
      * \param SnAfter The non-wetting phase saturation after dissolution.
      */
