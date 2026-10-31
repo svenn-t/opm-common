@@ -39,13 +39,10 @@ namespace Opm
 /*!
  * \ingroup FluidMatrixInteractions
  *
- * \brief Model for the vertically upscaled relative permeability of the
- *        non-wetting phase in the plume.
+ * \brief Models for the vertically upscaled non-wetting phase relative permeability.
  *
- * The argument of all models is the plume fraction \f$g\f$, i.e., the
- * permeability-weighted fraction of the layer thickness occupied by the mobile
- * plume, and \f$a\f$ is the threshold set by
- * VeSharpInterfaceLawParams::setNonWettingRelpermThreshold().
+ * \f$g\f$ is the permeability-weighted plume fraction and \f$a\f$ the threshold
+ * of VeSharpInterfaceLawParams::setNonWettingRelpermThreshold().
  */
 enum class VeNonWettingRelpermModel {
     //! \f$k_{rn} = k_{rn}^{end} f(g)\f$ with a tabulated function \f$f\f$
@@ -62,16 +59,14 @@ enum class VeNonWettingRelpermModel {
 /*!
  * \ingroup FluidMatrixInteractions
  *
- * \brief Specification of the material parameters for the
- *        vertical-equilibrium sharp-interface law.
+ * \brief Material parameters of the vertical-equilibrium sharp-interface law.
  *
- * Besides the static parameters this class holds the history of the
- * cell, i.e., the maximum relative plume thickness \f$\hat{h}_{max} =
- * h_{max}/H\f$ which has been reached so far. Below the mobile plume and
- * down to \f$h_{max}\f$ the non-wetting phase is trapped at its residual
- * saturation.
+ * Also holds the history of the cell, i.e., the maximum relative plume
+ * thickness \f$h_{max}/H\f$ reached so far.
  *
- *\see VeSharpInterfaceLaw
+ * \tparam TraitsT The material traits.
+ *
+ * \see VeSharpInterfaceLaw
  */
 template <class TraitsT>
 class VeSharpInterfaceLawParams : public EnsureFinalized
@@ -81,12 +76,13 @@ class VeSharpInterfaceLawParams : public EnsureFinalized
 public:
     using EnsureFinalized::finalize;
 
-    using Traits = TraitsT;
-    using TabulatedFunction = Tabulated1DFunction<Scalar>;
+    using Traits = TraitsT; //!< The material traits
+    using TabulatedFunction = Tabulated1DFunction<Scalar>; //!< Type of the tables
 
     /*!
-     * \brief Calculate all dependent quantities once the independent
-     *        quantities of the parameter object have been set.
+     * \brief Check the parameters and mark the object as finalized.
+     *
+     * \throw std::invalid_argument If a parameter is out of range.
      */
     void finalize()
     {
@@ -109,6 +105,8 @@ public:
 
     /*!
      * \brief Returns the residual saturation of the wetting phase in the plume.
+     *
+     * \return The residual saturation.
      */
     Scalar residualWettingSaturation() const
     {
@@ -118,6 +116,8 @@ public:
 
     /*!
      * \brief Set the residual saturation of the wetting phase in the plume.
+     *
+     * \param value The residual saturation.
      */
     void setResidualWettingSaturation(Scalar value)
     {
@@ -126,6 +126,8 @@ public:
 
     /*!
      * \brief Returns the residual saturation of the non-wetting phase below the plume.
+     *
+     * \return The residual saturation.
      */
     Scalar residualNonWettingSaturation() const
     {
@@ -135,6 +137,8 @@ public:
 
     /*!
      * \brief Set the residual saturation of the non-wetting phase below the plume.
+     *
+     * \param value The residual saturation.
      */
     void setResidualNonWettingSaturation(Scalar value)
     {
@@ -143,6 +147,8 @@ public:
 
     /*!
      * \brief Returns the wetting phase relative permeability in the residual zone.
+     *
+     * \return The relative permeability.
      */
     Scalar wettingRelpermEndpoint() const
     {
@@ -152,6 +158,8 @@ public:
 
     /*!
      * \brief Set the wetting phase relative permeability in the residual zone.
+     *
+     * \param value The relative permeability.
      */
     void setWettingRelpermEndpoint(Scalar value)
     {
@@ -160,6 +168,8 @@ public:
 
     /*!
      * \brief Returns the non-wetting phase relative permeability in the plume.
+     *
+     * \return The relative permeability.
      */
     Scalar nonWettingRelpermEndpoint() const
     {
@@ -169,6 +179,8 @@ public:
 
     /*!
      * \brief Set the non-wetting phase relative permeability in the plume.
+     *
+     * \param value The relative permeability.
      */
     void setNonWettingRelpermEndpoint(Scalar value)
     {
@@ -177,6 +189,8 @@ public:
 
     /*!
      * \brief Returns the model for the non-wetting phase relative permeability.
+     *
+     * \return The model.
      */
     [[nodiscard]] VeNonWettingRelpermModel nonWettingRelpermModel() const
     {
@@ -186,6 +200,8 @@ public:
 
     /*!
      * \brief Set the model for the non-wetting phase relative permeability.
+     *
+     * \param value The model.
      */
     void setNonWettingRelpermModel(VeNonWettingRelpermModel value)
     {
@@ -194,6 +210,8 @@ public:
 
     /*!
      * \brief Returns the plume fraction below which the non-wetting phase is immobile.
+     *
+     * \return The threshold plume fraction.
      */
     Scalar nonWettingRelpermThreshold() const
     {
@@ -203,6 +221,8 @@ public:
 
     /*!
      * \brief Set the plume fraction below which the non-wetting phase is immobile.
+     *
+     * \param value The threshold plume fraction in [0, 1).
      */
     void setNonWettingRelpermThreshold(Scalar value)
     {
@@ -210,8 +230,9 @@ public:
     }
 
     /*!
-     * \brief Returns the tabulated non-wetting phase relative permeability
-     *        as a function of the plume fraction.
+     * \brief Returns the table of the non-wetting phase relative permeability.
+     *
+     * \return The relative permeability as a function of the plume fraction.
      */
     const TabulatedFunction& nonWettingRelpermTable() const
     {
@@ -220,11 +241,10 @@ public:
     }
 
     /*!
-     * \brief Set the tabulated non-wetting phase relative permeability
-     *        as a function of the plume fraction.
+     * \brief Set the table of the non-wetting phase relative permeability.
      *
-     * The values are multiplied with the end point relative permeability.
-     * Plume fractions outside of the table range are clamped to the table.
+     * \param plumeFraction The plume fractions, clamped to the table range.
+     * \param relperm The relative permeabilities, scaled by the end point.
      */
     template <class Container>
     void setNonWettingRelpermTable(const Container& plumeFraction, const Container& relperm)
@@ -233,8 +253,9 @@ public:
     }
 
     /*!
-     * \brief Returns true if the layer consists of sub-layers with different
-     *        permeabilities.
+     * \brief Returns whether the layer consists of sub-layers.
+     *
+     * \return True if sub-layers are set.
      */
     [[nodiscard]] bool hasSubLayers() const
     {
@@ -243,10 +264,10 @@ public:
     }
 
     /*!
-     * \brief Returns the fraction of the layer transmissivity located above a
-     *        given relative depth below the top of the layer.
+     * \brief Returns the fraction of the layer transmissivity above a depth.
      *
-     * The relative depth is the depth divided by the layer thickness.
+     * \param relativeDepth The depth below the top divided by the layer thickness.
+     * \return The transmissivity fraction.
      */
     template <class Evaluation>
     Evaluation transmissivityFraction(const Evaluation& relativeDepth) const
@@ -261,9 +282,9 @@ public:
     /*!
      * \brief Set the sub-layers of the layer.
      *
-     * \param thickness The thicknesses of the sub-layers ordered from top to
-     *                  bottom. They are normalized by their sum.
+     * \param thickness The thicknesses from top to bottom, normalized by their sum.
      * \param permeability The permeabilities of the sub-layers.
+     * \throw std::invalid_argument If the sizes differ or a value is not positive.
      */
     template <class Container>
     void setSubLayers(const Container& thickness, const Container& permeability)
@@ -293,6 +314,8 @@ public:
 
     /*!
      * \brief Returns the maximum relative plume thickness reached so far.
+     *
+     * \return The maximum plume thickness divided by the layer thickness.
      */
     Scalar maxPlumeFraction() const
     {
@@ -301,6 +324,8 @@ public:
 
     /*!
      * \brief Set the maximum relative plume thickness reached so far.
+     *
+     * \param value The maximum plume thickness divided by the layer thickness.
      */
     void setMaxPlumeFraction(Scalar value)
     {
@@ -309,6 +334,8 @@ public:
 
     /*!
      * \brief Returns the maximum non-wetting phase saturation reached so far.
+     *
+     * \return The maximum saturation.
      */
     Scalar maxNonWettingSaturation() const
     {
@@ -316,9 +343,9 @@ public:
     }
 
     /*!
-     * \brief Update the history with the non-wetting phase saturation of a
-     *        converged time step.
+     * \brief Update the history with the saturation of a converged time step.
      *
+     * \param Sn The non-wetting phase saturation.
      * \return True if the maximum plume thickness has changed.
      */
     bool update(Scalar Sn)
@@ -332,15 +359,16 @@ public:
     }
 
 private:
-    Scalar residualWettingSaturation_ {0.0};
-    Scalar residualNonWettingSaturation_ {0.0};
-    Scalar wettingRelpermEndpoint_ {1.0};
-    Scalar nonWettingRelpermEndpoint_ {1.0};
+    Scalar residualWettingSaturation_ {0.0}; //!< Residual wetting saturation
+    Scalar residualNonWettingSaturation_ {0.0}; //!< Residual non-wetting saturation
+    Scalar wettingRelpermEndpoint_ {1.0}; //!< Wetting relperm in the residual zone
+    Scalar nonWettingRelpermEndpoint_ {1.0}; //!< Non-wetting relperm in the plume
+    //! Non-wetting relperm model
     VeNonWettingRelpermModel nonWettingRelpermModel_ {VeNonWettingRelpermModel::LinearThreshold};
-    Scalar nonWettingRelpermThreshold_ {0.0};
-    TabulatedFunction nonWettingRelpermTable_ {};
-    TabulatedFunction subLayerTransmissivity_ {};
-    Scalar maxPlumeFraction_ {0.0};
+    Scalar nonWettingRelpermThreshold_ {0.0}; //!< Plume fraction threshold
+    TabulatedFunction nonWettingRelpermTable_ {}; //!< Tabulated non-wetting relperm
+    TabulatedFunction subLayerTransmissivity_ {}; //!< Transmissivity fraction over depth
+    Scalar maxPlumeFraction_ {0.0}; //!< History: maximum relative plume thickness
 };
 
 } // namespace Opm
