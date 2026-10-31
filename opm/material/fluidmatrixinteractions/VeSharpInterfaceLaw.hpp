@@ -32,7 +32,8 @@
 #include <algorithm>
 #include <type_traits>
 
-namespace Opm {
+namespace Opm
+{
 
 /*!
  * \ingroup FluidMatrixInteractions
@@ -147,7 +148,8 @@ public:
      * \brief The relative permeability-saturation curves.
      */
     template <class Container, class FluidState>
-    static void relativePermeabilities(Container& values, const Params& params, const FluidState& fs)
+    static void
+    relativePermeabilities(Container& values, const Params& params, const FluidState& fs)
     {
         using Evaluation = std::remove_reference_t<decltype(values[0])>;
 
@@ -168,11 +170,15 @@ public:
 
     template <class Evaluation>
     static Evaluation twoPhaseSatPcnw(const Params& params, const Evaluation& Sw)
-    { return plumeFraction(params, 1.0 - Sw); }
+    {
+        return plumeFraction(params, 1.0 - Sw);
+    }
 
     template <class Evaluation>
     static Evaluation twoPhaseSatPcnwInv(const Params& params, const Evaluation& pcnw)
-    { return twoPhaseSatSw(params, pcnw); }
+    {
+        return twoPhaseSatSw(params, pcnw);
+    }
 
     /*!
      * \brief The wetting phase saturation from the normalized pressure
@@ -181,15 +187,16 @@ public:
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation Sw(const Params& params, const FluidState& fs)
     {
-        const Evaluation pc =
-            decay<Evaluation>(fs.pressure(Traits::nonWettingPhaseIdx))
+        const Evaluation pc = decay<Evaluation>(fs.pressure(Traits::nonWettingPhaseIdx))
             - decay<Evaluation>(fs.pressure(Traits::wettingPhaseIdx));
         return twoPhaseSatSw(params, pc);
     }
 
     template <class Evaluation>
     static Evaluation twoPhaseSatSw(const Params& params, const Evaluation& pc)
-    { return 1.0 - nonWettingSaturation(params, max(min(pc, Scalar{1.0}), Scalar{0.0})); }
+    {
+        return 1.0 - nonWettingSaturation(params, max(min(pc, Scalar {1.0}), Scalar {0.0}));
+    }
 
     /*!
      * \brief The non-wetting phase saturation from the normalized pressure
@@ -197,11 +204,15 @@ public:
      */
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation Sn(const Params& params, const FluidState& fs)
-    { return 1.0 - Sw<FluidState, Evaluation>(params, fs); }
+    {
+        return 1.0 - Sw<FluidState, Evaluation>(params, fs);
+    }
 
     template <class Evaluation>
     static Evaluation twoPhaseSatSn(const Params& params, const Evaluation& pc)
-    { return 1.0 - twoPhaseSatSw(params, pc); }
+    {
+        return 1.0 - twoPhaseSatSw(params, pc);
+    }
 
     /*!
      * \brief The relative permeability of the wetting phase.
@@ -228,7 +239,7 @@ public:
         if (params.nonWettingRelpermModel() == VeNonWettingRelpermModel::Linear) {
             mobile /= 1.0 - params.nonWettingRelpermThreshold();
         }
-        return min(mobile + params.wettingRelpermEndpoint()*(trapped - plume), Scalar{1.0});
+        return min(mobile + params.wettingRelpermEndpoint() * (trapped - plume), Scalar {1.0});
     }
 
     /*!
@@ -237,8 +248,7 @@ public:
     template <class FluidState, class Evaluation = typename FluidState::ValueType>
     static Evaluation krn(const Params& params, const FluidState& fs)
     {
-        const Evaluation Sw =
-            1.0 - decay<Evaluation>(fs.saturation(Traits::nonWettingPhaseIdx));
+        const Evaluation Sw = 1.0 - decay<Evaluation>(fs.saturation(Traits::nonWettingPhaseIdx));
         return twoPhaseSatKrn(params, Sw);
     }
 
@@ -257,17 +267,17 @@ public:
         }
         case VeNonWettingRelpermModel::Sinusoidal:
             if (scalarValue(g) > a) {
-                kr = sqrt(g*g - a*a);
+                kr = sqrt(g * g - a * a);
             }
             break;
         case VeNonWettingRelpermModel::Linear:
-            kr = (g - a)/(1.0 - a);
+            kr = (g - a) / (1.0 - a);
             break;
         case VeNonWettingRelpermModel::LinearThreshold:
             kr = g - a;
             break;
         }
-        return min(params.nonWettingRelpermEndpoint()*max(kr, Scalar{0.0}), Scalar{1.0});
+        return min(params.nonWettingRelpermEndpoint() * max(kr, Scalar {0.0}), Scalar {1.0});
     }
 
     /*!
@@ -280,11 +290,11 @@ public:
         const Scalar snr = params.residualNonWettingSaturation();
         const Scalar hMax = params.maxPlumeFraction();
 
-        if (scalarValue(Sn) >= hMax*(1.0 - swr)) {
+        if (scalarValue(Sn) >= hMax * (1.0 - swr)) {
             // drainage: no residual zone below the plume
-            return min(Sn/(1.0 - swr), Scalar{1.0});
+            return min(Sn / (1.0 - swr), Scalar {1.0});
         }
-        return max((Sn - hMax*snr)/(1.0 - swr - snr), Scalar{0.0});
+        return max((Sn - hMax * snr) / (1.0 - swr - snr), Scalar {0.0});
     }
 
     /*!
@@ -293,7 +303,9 @@ public:
      */
     template <class Evaluation>
     static Evaluation residualFraction(const Params& params, const Evaluation& Sn)
-    { return max(params.maxPlumeFraction() - plumeFraction(params, Sn), Scalar{0.0}); }
+    {
+        return max(params.maxPlumeFraction() - plumeFraction(params, Sn), Scalar {0.0});
+    }
 
     /*!
      * \brief The non-wetting phase saturation for a given relative plume
@@ -307,9 +319,9 @@ public:
         const Scalar hMax = params.maxPlumeFraction();
 
         if (scalarValue(plumeFraction) >= hMax) {
-            return plumeFraction*(1.0 - swr);
+            return plumeFraction * (1.0 - swr);
         }
-        return plumeFraction*(1.0 - swr - snr) + hMax*snr;
+        return plumeFraction * (1.0 - swr - snr) + hMax * snr;
     }
 
     /*!
@@ -335,10 +347,10 @@ public:
 
         Scalar hMax = 0.0;
         if (snr > 0.0) {
-            hMax = (SnAfter - h*(1.0 - swr - snr))/snr;
+            hMax = (SnAfter - h * (1.0 - swr - snr)) / snr;
         }
         if (hMax < h) {
-            hMax = SnAfter/(1.0 - swr);
+            hMax = SnAfter / (1.0 - swr);
         }
         params.setMaxPlumeFraction(std::min(hMax, params.maxPlumeFraction()));
     }
