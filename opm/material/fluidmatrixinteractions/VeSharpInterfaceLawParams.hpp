@@ -33,7 +33,8 @@
 #include <stdexcept>
 #include <vector>
 
-namespace Opm {
+namespace Opm
+{
 
 /*!
  * \ingroup FluidMatrixInteractions
@@ -90,8 +91,7 @@ public:
     void finalize()
     {
         if (residualWettingSaturation_ < 0.0 || residualNonWettingSaturation_ < 0.0
-            || residualWettingSaturation_ + residualNonWettingSaturation_ >= 1.0)
-        {
+            || residualWettingSaturation_ + residualNonWettingSaturation_ >= 1.0) {
             throw std::invalid_argument("The residual saturations must be non-negative "
                                         "and sum up to less than one");
         }
@@ -99,8 +99,7 @@ public:
             throw std::invalid_argument("The relative permeability threshold must be in [0, 1)");
         }
         if (nonWettingRelpermModel_ == VeNonWettingRelpermModel::Tabulated
-            && nonWettingRelpermTable_.numSamples() < 2)
-        {
+            && nonWettingRelpermTable_.numSamples() < 2) {
             throw std::invalid_argument("The tabulated relative permeability model "
                                         "requires a table with at least two entries");
         }
@@ -112,80 +111,113 @@ public:
      * \brief Returns the residual saturation of the wetting phase in the plume.
      */
     Scalar residualWettingSaturation() const
-    { EnsureFinalized::check(); return residualWettingSaturation_; }
+    {
+        EnsureFinalized::check();
+        return residualWettingSaturation_;
+    }
 
     /*!
      * \brief Set the residual saturation of the wetting phase in the plume.
      */
     void setResidualWettingSaturation(Scalar value)
-    { residualWettingSaturation_ = value; }
+    {
+        residualWettingSaturation_ = value;
+    }
 
     /*!
      * \brief Returns the residual saturation of the non-wetting phase below the plume.
      */
     Scalar residualNonWettingSaturation() const
-    { EnsureFinalized::check(); return residualNonWettingSaturation_; }
+    {
+        EnsureFinalized::check();
+        return residualNonWettingSaturation_;
+    }
 
     /*!
      * \brief Set the residual saturation of the non-wetting phase below the plume.
      */
     void setResidualNonWettingSaturation(Scalar value)
-    { residualNonWettingSaturation_ = value; }
+    {
+        residualNonWettingSaturation_ = value;
+    }
 
     /*!
      * \brief Returns the wetting phase relative permeability in the residual zone.
      */
     Scalar wettingRelpermEndpoint() const
-    { EnsureFinalized::check(); return wettingRelpermEndpoint_; }
+    {
+        EnsureFinalized::check();
+        return wettingRelpermEndpoint_;
+    }
 
     /*!
      * \brief Set the wetting phase relative permeability in the residual zone.
      */
     void setWettingRelpermEndpoint(Scalar value)
-    { wettingRelpermEndpoint_ = value; }
+    {
+        wettingRelpermEndpoint_ = value;
+    }
 
     /*!
      * \brief Returns the non-wetting phase relative permeability in the plume.
      */
     Scalar nonWettingRelpermEndpoint() const
-    { EnsureFinalized::check(); return nonWettingRelpermEndpoint_; }
+    {
+        EnsureFinalized::check();
+        return nonWettingRelpermEndpoint_;
+    }
 
     /*!
      * \brief Set the non-wetting phase relative permeability in the plume.
      */
     void setNonWettingRelpermEndpoint(Scalar value)
-    { nonWettingRelpermEndpoint_ = value; }
+    {
+        nonWettingRelpermEndpoint_ = value;
+    }
 
     /*!
      * \brief Returns the model for the non-wetting phase relative permeability.
      */
-    VeNonWettingRelpermModel nonWettingRelpermModel() const
-    { EnsureFinalized::check(); return nonWettingRelpermModel_; }
+    [[nodiscard]] VeNonWettingRelpermModel nonWettingRelpermModel() const
+    {
+        EnsureFinalized::check();
+        return nonWettingRelpermModel_;
+    }
 
     /*!
      * \brief Set the model for the non-wetting phase relative permeability.
      */
     void setNonWettingRelpermModel(VeNonWettingRelpermModel value)
-    { nonWettingRelpermModel_ = value; }
+    {
+        nonWettingRelpermModel_ = value;
+    }
 
     /*!
      * \brief Returns the plume fraction below which the non-wetting phase is immobile.
      */
     Scalar nonWettingRelpermThreshold() const
-    { EnsureFinalized::check(); return nonWettingRelpermThreshold_; }
+    {
+        EnsureFinalized::check();
+        return nonWettingRelpermThreshold_;
+    }
 
     /*!
      * \brief Set the plume fraction below which the non-wetting phase is immobile.
      */
     void setNonWettingRelpermThreshold(Scalar value)
-    { nonWettingRelpermThreshold_ = value; }
+    {
+        nonWettingRelpermThreshold_ = value;
+    }
 
     /*!
      * \brief Returns the tabulated non-wetting phase relative permeability
      *        as a function of the plume fraction.
      */
     const TabulatedFunction& nonWettingRelpermTable() const
-    { EnsureFinalized::check(); return nonWettingRelpermTable_; }
+    {
+        EnsureFinalized::check();
+        return nonWettingRelpermTable_;
+    }
 
     /*!
      * \brief Set the tabulated non-wetting phase relative permeability
@@ -195,16 +227,20 @@ public:
      * Plume fractions outside of the table range are clamped to the table.
      */
     template <class Container>
-    void setNonWettingRelpermTable(const Container& plumeFraction,
-                                   const Container& relperm)
-    { nonWettingRelpermTable_.setXYContainers(plumeFraction, relperm); }
+    void setNonWettingRelpermTable(const Container& plumeFraction, const Container& relperm)
+    {
+        nonWettingRelpermTable_.setXYContainers(plumeFraction, relperm);
+    }
 
     /*!
      * \brief Returns true if the layer consists of sub-layers with different
      *        permeabilities.
      */
-    bool hasSubLayers() const
-    { EnsureFinalized::check(); return subLayerTransmissivity_.numSamples() > 0; }
+    [[nodiscard]] bool hasSubLayers() const
+    {
+        EnsureFinalized::check();
+        return subLayerTransmissivity_.numSamples() > 0;
+    }
 
     /*!
      * \brief Returns the fraction of the layer transmissivity located above a
@@ -244,7 +280,7 @@ public:
                                             "permeabilities must be positive");
             }
             depth[i + 1] = depth[i] + thickness[i];
-            transmissivity[i + 1] = transmissivity[i] + thickness[i]*permeability[i];
+            transmissivity[i + 1] = transmissivity[i] + thickness[i] * permeability[i];
         }
         const Scalar totalDepth = depth.back();
         const Scalar totalTransmissivity = transmissivity.back();
@@ -259,19 +295,25 @@ public:
      * \brief Returns the maximum relative plume thickness reached so far.
      */
     Scalar maxPlumeFraction() const
-    { return maxPlumeFraction_; }
+    {
+        return maxPlumeFraction_;
+    }
 
     /*!
      * \brief Set the maximum relative plume thickness reached so far.
      */
     void setMaxPlumeFraction(Scalar value)
-    { maxPlumeFraction_ = std::clamp(value, Scalar{0.0}, Scalar{1.0}); }
+    {
+        maxPlumeFraction_ = std::clamp(value, Scalar {0.0}, Scalar {1.0});
+    }
 
     /*!
      * \brief Returns the maximum non-wetting phase saturation reached so far.
      */
     Scalar maxNonWettingSaturation() const
-    { return maxPlumeFraction_*(1.0 - residualWettingSaturation_); }
+    {
+        return maxPlumeFraction_ * (1.0 - residualWettingSaturation_);
+    }
 
     /*!
      * \brief Update the history with the non-wetting phase saturation of a
@@ -281,7 +323,7 @@ public:
      */
     bool update(Scalar Sn)
     {
-        const Scalar plumeFraction = Sn/(1.0 - residualWettingSaturation_);
+        const Scalar plumeFraction = Sn / (1.0 - residualWettingSaturation_);
         if (plumeFraction <= maxPlumeFraction_) {
             return false;
         }
@@ -290,15 +332,15 @@ public:
     }
 
 private:
-    Scalar residualWettingSaturation_{0.0};
-    Scalar residualNonWettingSaturation_{0.0};
-    Scalar wettingRelpermEndpoint_{1.0};
-    Scalar nonWettingRelpermEndpoint_{1.0};
-    VeNonWettingRelpermModel nonWettingRelpermModel_{VeNonWettingRelpermModel::LinearThreshold};
-    Scalar nonWettingRelpermThreshold_{0.0};
-    TabulatedFunction nonWettingRelpermTable_{};
-    TabulatedFunction subLayerTransmissivity_{};
-    Scalar maxPlumeFraction_{0.0};
+    Scalar residualWettingSaturation_ {0.0};
+    Scalar residualNonWettingSaturation_ {0.0};
+    Scalar wettingRelpermEndpoint_ {1.0};
+    Scalar nonWettingRelpermEndpoint_ {1.0};
+    VeNonWettingRelpermModel nonWettingRelpermModel_ {VeNonWettingRelpermModel::LinearThreshold};
+    Scalar nonWettingRelpermThreshold_ {0.0};
+    TabulatedFunction nonWettingRelpermTable_ {};
+    TabulatedFunction subLayerTransmissivity_ {};
+    Scalar maxPlumeFraction_ {0.0};
 };
 
 } // namespace Opm
