@@ -192,7 +192,7 @@ public:
      *
      * \return The model.
      */
-    [[nodiscard]] VeNonWettingRelpermModel nonWettingRelpermModel() const
+    VeNonWettingRelpermModel nonWettingRelpermModel() const
     {
         EnsureFinalized::check();
         return nonWettingRelpermModel_;
@@ -257,7 +257,7 @@ public:
      *
      * \return True if sub-layers are set.
      */
-    [[nodiscard]] bool hasSubLayers() const
+    bool hasSubLayers() const
     {
         EnsureFinalized::check();
         return subLayerTransmissivity_.numSamples() > 0;
@@ -345,11 +345,20 @@ public:
     /*!
      * \brief Update the history with the saturation of a converged time step.
      *
+     * The maximum plume thickness grows with the plume and shrinks if the
+     * trapped zone holds more than the non-wetting phase of the cell.
+     *
      * \param Sn The non-wetting phase saturation.
      * \return True if the maximum plume thickness has changed.
      */
     bool update(Scalar Sn)
     {
+        // the trapped zone holds at most the non-wetting phase of the cell
+        if (Sn < maxPlumeFraction_ * residualNonWettingSaturation_) {
+            setMaxPlumeFraction(Sn / residualNonWettingSaturation_);
+            return true;
+        }
+
         const Scalar plumeFraction = Sn / (1.0 - residualWettingSaturation_);
         if (plumeFraction <= maxPlumeFraction_) {
             return false;

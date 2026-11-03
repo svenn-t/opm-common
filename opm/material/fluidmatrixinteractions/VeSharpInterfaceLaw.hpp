@@ -30,6 +30,7 @@
 #include <opm/material/common/MathToolbox.hpp>
 
 #include <algorithm>
+#include <array>
 #include <type_traits>
 
 namespace Opm
@@ -265,19 +266,36 @@ public:
     template <class Evaluation>
     static Evaluation twoPhaseSatKrw(const Params& params, const Evaluation& Sw)
     {
+        const auto parts = twoPhaseSatKrwParts(params, Sw);
+        return min(parts[0] + parts[1], Scalar {1.0});
+    }
+
+    /*!
+     * \brief The parts of the wetting phase relative permeability in the
+     *        trapped zone and in the brine zone below it.
+     *
+     * The sum is the relative permeability before it is limited to one.
+     *
+     * \param params The material law parameters.
+     * \param Sw The wetting phase saturation.
+     * \return The parts in the trapped zone and in the brine zone.
+     */
+    template <class Evaluation>
+    static std::array<Evaluation, 2> twoPhaseSatKrwParts(const Params& params, const Evaluation& Sw)
+    {
         const Evaluation h = plumeFraction(params, 1.0 - Sw);
-        Evaluation hMax = h;
-        if (scalarValue(h) < params.maxPlumeFraction()) {
-            hMax = params.maxPlumeFraction();
+        Evaluation hMax = maxPlumeFraction(params, 1.0 - Sw);
+        if (scalarValue(h) > scalarValue(hMax)) {
+            hMax = h;
         }
 
         const Evaluation plume = params.transmissivityFraction(h);
         const Evaluation trapped = params.transmissivityFraction(hMax);
-        Evaluation mobile = 1.0 - trapped;
+        Evaluation brine = 1.0 - trapped;
         if (params.nonWettingRelpermModel() == VeNonWettingRelpermModel::Linear) {
-            mobile /= 1.0 - params.nonWettingRelpermThreshold();
+            brine /= 1.0 - params.nonWettingRelpermThreshold();
         }
-        return min(mobile + params.wettingRelpermEndpoint() * (trapped - plume), Scalar {1.0});
+        return {params.wettingRelpermEndpoint() * (trapped - plume), brine};
     }
 
     /*!
@@ -351,6 +369,28 @@ public:
     }
 
     /*!
+     * \brief The relative maximum plume thickness \f$h_{max}/H\f$ of the history.
+     *
+     * The trapped zone holds at most the non-wetting phase of the cell, so
+     * \f$h_{max} \le S_n H / S_{nr}\f$. This matters if the non-wetting
+     * phase is removed from the trapped zone, e.g. by dissolution.
+     *
+     * \param params The material law parameters.
+     * \param Sn The non-wetting phase saturation.
+     * \return The relative maximum plume thickness.
+     */
+    template <class Evaluation>
+    static Evaluation maxPlumeFraction(const Params& params, const Evaluation& Sn)
+    {
+        const Scalar snr = params.residualNonWettingSaturation();
+        const Scalar hMax = params.maxPlumeFraction();
+        if (snr > 0.0 && scalarValue(Sn) < hMax * snr) {
+            return max(Sn / snr, Scalar {0.0});
+        }
+        return Evaluation {hMax};
+    }
+
+    /*!
      * \brief The relative thickness \f$(h_{max} - h)/H\f$ of the trapped zone.
      *
      * \param params The material law parameters.
@@ -360,7 +400,7 @@ public:
     template <class Evaluation>
     static Evaluation residualFraction(const Params& params, const Evaluation& Sn)
     {
-        return max(params.maxPlumeFraction() - plumeFraction(params, Sn), Scalar {0.0});
+        return max(maxPlumeFraction(params, Sn) - plumeFraction(params, Sn), Scalar {0.0});
     }
 
     /*!
