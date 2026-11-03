@@ -153,6 +153,48 @@ BOOST_AUTO_TEST_CASE(Imbibition)
     BOOST_CHECK_CLOSE(Law::plumeFraction(params, SnAbove).derivative(0), 1.0 / 0.8, tolerance);
 }
 
+BOOST_AUTO_TEST_CASE(TrappedZoneLimitedBySaturation)
+{
+    Params params = makeParams();
+    params.update(0.4);
+
+    // the trapped zone of h_max/H = 0.5 needs Sn = 0.125, with Sn = 0.05 it
+    // shrinks to Sn/Snr = 0.2
+    const Scalar Sn = 0.05;
+    BOOST_CHECK_SMALL(Law::plumeFraction(params, Sn), tolerance);
+    BOOST_CHECK_CLOSE(Law::maxPlumeFraction(params, Sn), 0.2, tolerance);
+    BOOST_CHECK_CLOSE(Law::residualFraction(params, Sn), 0.2, tolerance);
+    BOOST_CHECK_CLOSE(Law::twoPhaseSatKrw(params, 1.0 - Sn), 0.8 + 0.3 * 0.2, tolerance);
+
+    // continuous at Sn = h_max/H * Snr
+    BOOST_CHECK_CLOSE(Law::residualFraction(params, 0.125), 0.5, tolerance);
+    BOOST_CHECK_CLOSE(Law::residualFraction(params, 0.125 - 1e-12), 0.5, 1e-6);
+
+    // the history keeps the shrunk trapped zone
+    BOOST_CHECK(params.update(Sn));
+    BOOST_CHECK_CLOSE(params.maxPlumeFraction(), 0.2, tolerance);
+    BOOST_CHECK(!params.update(Sn));
+}
+
+BOOST_AUTO_TEST_CASE(WettingRelpermParts)
+{
+    Params params = makeParams();
+    params.update(0.4);
+
+    // h/H = 0.125/0.55 below h_max/H = 0.5
+    const Scalar Sn = 0.25;
+    const Scalar h = 0.125 / 0.55;
+    const auto parts = Law::twoPhaseSatKrwParts(params, 1.0 - Sn);
+    BOOST_CHECK_CLOSE(parts[0], 0.3 * (0.5 - h), tolerance);
+    BOOST_CHECK_CLOSE(parts[1], 0.5, tolerance);
+    BOOST_CHECK_CLOSE(parts[0] + parts[1], Law::twoPhaseSatKrw(params, 1.0 - Sn), tolerance);
+
+    // no trapped zone during drainage
+    const auto drainage = Law::twoPhaseSatKrwParts(params, 1.0 - 0.6);
+    BOOST_CHECK_SMALL(drainage[0], tolerance);
+    BOOST_CHECK_CLOSE(drainage[1], 0.25, tolerance);
+}
+
 BOOST_AUTO_TEST_CASE(Monotonicity)
 {
     for (const Scalar SnMax : {0.0, 0.4, 0.8}) {
