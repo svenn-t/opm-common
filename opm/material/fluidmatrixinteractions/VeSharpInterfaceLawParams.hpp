@@ -41,11 +41,12 @@ namespace Opm
  *
  * \brief Models for the vertically upscaled non-wetting phase relative permeability.
  *
- * \f$g\f$ is the permeability-weighted plume fraction and \f$a\f$ the threshold
- * of VeSharpInterfaceLawParams::setNonWettingRelpermThreshold().
+ * \f$h\f$ is the relative plume thickness, \f$g\f$ the permeability-weighted
+ * plume fraction and \f$a\f$ the threshold of
+ * VeSharpInterfaceLawParams::setNonWettingRelpermThreshold().
  */
 enum class VeNonWettingRelpermModel {
-    //! \f$k_{rn} = k_{rn}^{end} f(g)\f$ with a tabulated function \f$f\f$
+    //! \f$k_{rn} = k_{rn}^{end} f(h)\f$ with a tabulated upscaled function \f$f\f$
     Tabulated,
     //! \f$k_{rn} = k_{rn}^{end} \sqrt{g^2 - a^2}\f$ for \f$g > a\f$
     Sinusoidal,
