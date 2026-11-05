@@ -284,6 +284,18 @@ BOOST_AUTO_TEST_CASE(SubLayers)
         Law::twoPhaseSatKrw(params, 1.0 - Sn), 2.5 / 9.0 + 0.3 * 4.0 / 9.0, tolerance);
 }
 
+BOOST_AUTO_TEST_CASE(SubLayersTabulated)
+{
+    Params params = makeParams(Opm::VeNonWettingRelpermModel::Tabulated);
+    params.setSubLayers(std::vector<Scalar> {10.0, 40.0}, std::vector<Scalar> {5e-13, 1e-13});
+    params.finalize();
+
+    // the table takes h/H = 0.5, not F = 6.5/9; the wetting phase uses F
+    const Scalar Sw = 0.6;
+    BOOST_CHECK_CLOSE(Law::twoPhaseSatKrn(params, Sw), 0.8 * 0.25, tolerance);
+    BOOST_CHECK_CLOSE(Law::twoPhaseSatKrw(params, Sw), 2.5 / 9.0, tolerance);
+}
+
 BOOST_AUTO_TEST_CASE(DepleteResidual)
 {
     Params params = makeParams();

@@ -54,7 +54,8 @@ namespace Opm
  * transmissivity fraction \f$F(z)\f$ above the relative depth \f$z\f$, the
  * relative permeabilities are
  * \f$k_{rw} = 1 - F(h_{max}/H) + k_{rw}^{end} (F(h_{max}/H) - F(h/H))\f$ and
- * \f$k_{rn}(F(h/H))\f$ of VeNonWettingRelpermModel.
+ * \f$k_{rn}(F(h/H))\f$ of VeNonWettingRelpermModel, or \f$k_{rn}(h/H)\f$ for a
+ * tabulated function.
  *
  * \tparam TraitsT The material traits.
  * \tparam ParamsT The parameter class.
@@ -322,14 +323,16 @@ public:
     template <class Evaluation>
     static Evaluation twoPhaseSatKrn(const Params& params, const Evaluation& Sw)
     {
-        const Evaluation g = params.transmissivityFraction(plumeFraction(params, 1.0 - Sw));
+        const Evaluation h = plumeFraction(params, 1.0 - Sw);
+        const Evaluation g = params.transmissivityFraction(h);
         const Scalar a = params.nonWettingRelpermThreshold();
 
         Evaluation kr = 0.0;
         switch (params.nonWettingRelpermModel()) {
         case VeNonWettingRelpermModel::Tabulated: {
+            // the table is an upscaled function of the plume fraction itself
             const auto& table = params.nonWettingRelpermTable();
-            kr = table.eval(max(min(g, table.xMax()), table.xMin()));
+            kr = table.eval(max(min(h, table.xMax()), table.xMin()));
             break;
         }
         case VeNonWettingRelpermModel::Sinusoidal:
