@@ -1502,6 +1502,7 @@ list(APPEND PUBLIC_HEADER_FILES
   opm/material/fluidstates/SaturationOverlayFluidState.hpp
   opm/material/fluidstates/SimpleModularFluidState.hpp
   opm/material/fluidstates/TemperatureOverlayFluidState.hpp
+  opm/material/fluidstates/VeFluidState.hpp
   opm/material/fluidsystems/BaseFluidSystem.hpp
   opm/material/fluidsystems/BlackOilDefaultFluidSystemIndices.hpp
   opm/material/fluidsystems/BlackOilFluidSystem.hpp
