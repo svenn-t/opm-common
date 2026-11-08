@@ -209,17 +209,19 @@ public:
      * \param pressMin The minimum pressure used for tabulation of water [Pa]
      * \param pressMax The maximum pressure used for tabulation of water [Pa]
      * \param nPress The number of ticks on the pressure axis of the  table of water
+     * \param salinity The mass fraction of salt in brine, by default the one used
+     *                 by the CO2 tables [-]
      */
     static void init(Scalar tempMin, Scalar tempMax, unsigned nTemp,
-                     Scalar pressMin, Scalar pressMax, unsigned nPress)
+                     Scalar pressMin, Scalar pressMax, unsigned nPress,
+                     Scalar salinity = CO2::brineSalinity)
     {
         if (H2O::isTabulated) {
             H2O_Tabulated::init(tempMin, tempMax, nTemp,
                                 pressMin, pressMax, nPress);
         }
 
-        // set the salinity of brine to the one used by the CO2 tables
-        Brine_IAPWS::salinity = CO2::brineSalinity;
+        Brine_IAPWS::salinity = salinity;
 
         if (Brine::isTabulated) {
             Brine_Tabulated::init(tempMin, tempMax, nTemp,
